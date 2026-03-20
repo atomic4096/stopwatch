@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>名前管理</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  body {
+    background: #000;
+    color: #fff;
+    font-family: sans-serif;
+    margin: 20px;
+    text-align: center;
+  }
+  .card {
+    background: #111;
+    border: 1px solid #333;
+    padding: 12px;
+    margin: 12px 0;
+    border-radius: 8px;
+    font-size: 20px;
+  }
+  button {
+    font-size: 18px;
+    padding: 10px 20px;
+    margin: 6px;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+  }
+  #addBtn { background: #28a745; }
+  .delBtn { background: #dc3545; }
+  #backBtn { background: #17a2b8; }
+  input {
+    font-size: 18px;
+    padding: 6px;
+    width: 80%;
+  }
+</style>
+</head>
+<body>
+
+<h2>名前管理</h2>
+
+<input id="nameInput" type="text" placeholder="名前を入力">
+<button id="addBtn" onclick="addName()">追加</button>
+
+<div id="list"></div>
+
+<button id="backBtn" onclick="location.href='index.html'">戻る</button>
+
+<script>
+let names = JSON.parse(localStorage.getItem("peopleList") || "[]");
+
+function render() {
+  const div = document.getElementById("list");
+  div.innerHTML = "";
+
+  names.forEach((name, i) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      ${name}
+      <button class="delBtn" onclick="delName(${i})">削除</button>
+    `;
+    div.appendChild(card);
+  });
+}
+
+function addName() {
+  const name = document.getElementById("nameInput").value.trim();
+  if (!name) return;
+  if (!names.includes(name)) {
+    names.push(name);
+    save();
+    render();
+  }
+  document.getElementById("nameInput").value = "";
+}
+
+function delName(i) {
+  names.splice(i, 1);
+  save();
+  render();
+}
+
+function save() {
+  localStorage.setItem("peopleList", JSON.stringify(names));
+}
+
+render();
+</script>
+
+</body>
+</html>

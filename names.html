@@ -4,39 +4,39 @@
 <meta charset="UTF-8">
 <title>名前管理</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
   body {
-    background: #000;
-    color: #fff;
-    font-family: sans-serif;
-    margin: 20px;
-    text-align: center;
+    background:#000;
+    color:#fff;
+    font-family:sans-serif;
+    margin:20px;
+    text-align:center;
   }
   .card {
-    background: #111;
-    border: 1px solid #333;
-    padding: 12px;
-    margin: 12px 0;
-    border-radius: 8px;
-    font-size: 20px;
+    background:#111;
+    border:1px solid #333;
+    border-radius:8px;
+    padding:8px;
+    margin:6px 0;
+    font-size:18px;
+  }
+  input {
+    width:80%;
+    font-size:18px;
+    padding:6px;
+    margin-bottom:8px;
   }
   button {
-    font-size: 18px;
-    padding: 10px 20px;
-    margin: 6px;
-    border: none;
-    border-radius: 8px;
-    color: #fff;
+    font-size:16px;
+    padding:8px 16px;
+    border:none;
+    border-radius:6px;
+    color:#fff;
+    margin:4px;
   }
-  #addBtn { background: #28a745; }
-  .delBtn { background: #dc3545; }
-  #backBtn { background: #17a2b8; }
-  input {
-    font-size: 18px;
-    padding: 6px;
-    width: 80%;
-  }
+  #addBtn { background:#28a745; }
+  .delBtn { background:#dc3545; }
+  #backBtn { background:#17a2b8; }
 </style>
 </head>
 <body>
@@ -54,29 +54,29 @@
 let names = JSON.parse(localStorage.getItem("peopleList") || "[]");
 
 function render() {
-  const div = document.getElementById("list");
-  div.innerHTML = "";
-
-  names.forEach((name, i) => {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.innerHTML = `
-      ${name}
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  names.forEach((n, i) => {
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      ${n}
       <button class="delBtn" onclick="delName(${i})">削除</button>
     `;
-    div.appendChild(card);
+    list.appendChild(div);
   });
 }
 
 function addName() {
-  const name = document.getElementById("nameInput").value.trim();
-  if (!name) return;
-  if (!names.includes(name)) {
-    names.push(name);
+  const input = document.getElementById("nameInput");
+  const v = input.value.trim();
+  if (!v) return;
+  if (!names.includes(v)) {
+    names.push(v);
     save();
     render();
   }
-  document.getElementById("nameInput").value = "";
+  input.value = "";
 }
 
 function delName(i) {
@@ -91,6 +91,5 @@ function save() {
 
 render();
 </script>
-
 </body>
 </html>

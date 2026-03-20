@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Section Stopwatch</title>
+<title>セクション一覧</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   body {
@@ -10,15 +10,7 @@
     color:#fff;
     font-family:sans-serif;
     margin:0;
-    padding-bottom:120px;
-  }
-  #time {
-    font-size:64px;
-    text-align:center;
-    margin:16px 0;
-  }
-  #sections {
-    padding:8px;
+    padding:12px 8px 80px;
   }
   .section {
     background:#111;
@@ -36,11 +28,6 @@
     padding-top:6px;
     border-top:1px dashed #444;
     font-size:14px;
-  }
-  select {
-    font-size:14px;
-    padding:2px 4px;
-    margin-left:6px;
   }
   .bottom-bar {
     position:fixed;
@@ -62,35 +49,22 @@
     border-radius:6px;
     color:#fff;
   }
-  #mainBtn { background:#28a745; }
-  #lapBtn { background:#007bff; }
-  #resetBtn { background:#6c757d; }
+  #backBtn { background:#17a2b8; }
   #csvBtn { background:#fd7e14; }
-  #nameBtn { background:#17a2b8; }
-  #secBtn { background:#6610f2; }
 </style>
 </head>
 <body>
 
-<div id="time">00:00.00</div>
+<h2>セクション一覧</h2>
 <div id="sections"></div>
 
 <div class="bottom-bar">
-  <button id="mainBtn" onclick="toggleStartStop()">Start</button>
-  <button id="lapBtn" onclick="addLap()">Lap</button>
-  <button id="resetBtn" onclick="resetAll()">Reset</button>
+  <button id="backBtn" onclick="location.href='index.html'">戻る</button>
   <button id="csvBtn" onclick="downloadCSV()">CSV</button>
-  <button id="nameBtn" onclick="location.href='names.html'">名前</button>
-  <button id="secBtn" onclick="location.href='sections.html'">セクション</button>
 </div>
 
 <script>
-let timer = null;
-let startTime = 0;
-let currentSectionIndex = null;
-
 let sections = JSON.parse(localStorage.getItem("sections_v2") || "[]");
-let names = JSON.parse(localStorage.getItem("peopleList") || "[]");
 
 function toMS(t) {
   const [m, s] = t.split(":");
@@ -102,78 +76,6 @@ function fromMS(ms) {
   const s = Math.floor((ms%60000)/1000);
   const ms2 = Math.floor((ms%1000)/10);
   return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(ms2).padStart(2,"0")}`;
-}
-
-function updateDisplay(ms) {
-  document.getElementById("time").textContent = fromMS(ms);
-}
-function tick() {
-  const now = Date.now();
-  updateDisplay(now - startTime);
-}
-
-function toggleStartStop() {
-  const btn = document.getElementById("mainBtn");
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-    btn.textContent = "Start";
-    btn.style.background = "#28a745";
-    saveSections();
-  } else {
-    startTime = Date.now();
-    updateDisplay(0);
-    timer = setInterval(tick, 10);
-    btn.textContent = "Stop";
-    btn.style.background = "#dc3545";
-    startNewSection();
-  }
-}
-
-function startNewSection() {
-  const sec = { laps: [] };
-  sections.push(sec);
-  currentSectionIndex = sections.length - 1;
-  saveSections();
-  render();
-}
-
-function resetAll() {
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-  }
-  startTime = 0;
-  currentSectionIndex = null;
-  sections = [];
-  saveSections();
-  updateDisplay(0);
-  document.getElementById("mainBtn").textContent = "Start";
-  document.getElementById("mainBtn").style.background = "#28a745";
-  render();
-}
-
-function addLap() {
-  if (currentSectionIndex === null) return;
-  const sec = sections[currentSectionIndex];
-  const nowStr = document.getElementById("time").textContent;
-  let diff = nowStr;
-  if (sec.laps.length > 0) {
-    diff = fromMS(toMS(nowStr) - toMS(sec.laps[sec.laps.length - 1].time));
-  }
-  sec.laps.push({
-    time: nowStr,
-    diff: diff,
-    name: ""
-  });
-  saveSections();
-  render();
-}
-
-function changeName(secIndex, lapIndex, value) {
-  sections[secIndex].laps[lapIndex].name = value;
-  saveSections();
-  render();
 }
 
 function buildPersonSummary(sec) {
@@ -190,7 +92,6 @@ function buildPersonSummary(sec) {
 }
 
 function render() {
-  names = JSON.parse(localStorage.getItem("peopleList") || "[]");
   const container = document.getElementById("sections");
   container.innerHTML = "";
 
@@ -200,7 +101,6 @@ function render() {
 
     let html = `<h3>セクション ${si+1}</h3>`;
 
-    // 周回数（人ごと）を計算
     const lapCountsByName = {};
     sec.laps.forEach((lap, li) => {
       let lapCount = "";
@@ -212,16 +112,11 @@ function render() {
       html += `
         <div class="lap-row">
           LAP${li+1} ${lap.time} (+${lap.diff})
-          <select onchange="changeName(${si},${li},this.value)">
-            <option value="">未設定</option>
-            ${names.map(n => `<option value="${n}" ${lap.name===n?"selected":""}>${n}</option>`).join("")}
-          </select>
           ${lap.name ? `　${lap.name}　周回${lapCount}` : ""}
         </div>
       `;
     });
 
-    // 人ごとの区間サマリ
     const summary = buildPersonSummary(sec);
     const persons = Object.keys(summary);
     if (persons.length > 0) {
@@ -233,10 +128,10 @@ function render() {
           const lastIdx = info.indices[info.indices.length - 1];
           const total = fromMS(toMS(sec.laps[lastIdx].time) - toMS(sec.laps[firstIdx].time));
           html += `<div><strong>${name}</strong><br>
-            区間1: LAP${firstIdx+1} → LAP${lastIdx+1} = ${total}<br>`;
-          html += `　LAP${firstIdx+1}: ${sec.laps[firstIdx].time}<br>`;
-          html += `　LAP${lastIdx+1}: ${sec.laps[lastIdx].time}<br>`;
-          html += `</div>`;
+            区間1: LAP${firstIdx+1} → LAP${lastIdx+1} = ${total}<br>
+            　LAP${firstIdx+1}: ${sec.laps[firstIdx].time}<br>
+            　LAP${lastIdx+1}: ${sec.laps[lastIdx].time}<br>
+          </div>`;
         }
       });
       html += `</div>`;
@@ -265,13 +160,9 @@ function downloadCSV() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "laps.csv";
+  a.download = "sections.csv";
   a.click();
   URL.revokeObjectURL(url);
-}
-
-function saveSections() {
-  localStorage.setItem("sections_v2", JSON.stringify(sections));
 }
 
 render();

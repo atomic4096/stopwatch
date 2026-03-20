@@ -3,10 +3,44 @@
 <head>
 <meta charset="UTF-8">
 <title>Stopwatch</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-  body { font-family: sans-serif; text-align: center; margin-top: 80px; }
-  #time { font-size: 60px; margin-bottom: 30px; }
-  button { font-size: 24px; padding: 10px 20px; margin: 10px; }
+  body { 
+    font-family: sans-serif; 
+    text-align: center; 
+    margin: 20px; 
+  }
+  #time { 
+    font-size: 64px; 
+    margin: 20px 0; 
+  }
+  button { 
+    font-size: 22px; 
+    padding: 14px 26px; 
+    margin: 8px; 
+    width: 42%; 
+    max-width: 200px;
+  }
+  table { 
+    margin: 20px auto; 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 18px;
+  }
+  th, td { 
+    border-bottom: 1px solid #ccc; 
+    padding: 10px; 
+  }
+  input { 
+    width: 95%; 
+    padding: 6px; 
+    font-size: 18px; 
+  }
+  .table-wrapper {
+    overflow-x: auto;
+    width: 100%;
+  }
 </style>
 </head>
 <body>
@@ -16,11 +50,20 @@
 <button onclick="start()">Start</button>
 <button onclick="stop()">Stop</button>
 <button onclick="reset()">Reset</button>
+<button onclick="lap()">Lap</button>
+<button onclick="downloadCSV()">CSV</button>
+
+<div class="table-wrapper">
+<table id="lapTable">
+  <tr><th>Lap</th><th>Time</th><th>Name</th></tr>
+</table>
+</div>
 
 <script>
 let startTime;
 let timer;
 let elapsed = 0;
+let laps = [];
 
 function update() {
   const now = Date.now();
@@ -51,7 +94,57 @@ function reset() {
   clearInterval(timer);
   timer = null;
   elapsed = 0;
+  laps = [];
   document.getElementById("time").textContent = "00:00.00";
+  renderLaps();
+}
+
+function lap() {
+  const timeText = document.getElementById("time").textContent;
+  laps.push({ time: timeText, name: "" });
+  renderLaps();
+}
+
+function renderLaps() {
+  const table = document.getElementById("lapTable");
+  table.innerHTML = "<tr><th>Lap</th><th>Time</th><th>Name</th></tr>";
+
+  laps.forEach((lap, index) => {
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td>${index + 1}</td>
+      <td>${lap.time}</td>
+      <td>
+        <input type="text" value="${lap.name}" 
+          oninput="updateName(${index}, this.value)">
+      </td>
+    `;
+
+    table.appendChild(row);
+  });
+}
+
+function updateName(index, value) {
+  laps[index].name = value;
+}
+
+function downloadCSV() {
+  let csv = "Lap,Time,Name\n";
+
+  laps.forEach((lap, index) => {
+    csv += `${index + 1},${lap.time},${lap.name}\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "laps.csv";
+  a.click();
+
+  URL.revokeObjectURL(url);
 }
 </script>
 

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Stopwatch</title>
+<style>
+  body { font-family: sans-serif; text-align: center; margin-top: 80px; }
+  #time { font-size: 60px; margin-bottom: 30px; }
+  button { font-size: 24px; padding: 10px 20px; margin: 10px; }
+</style>
+</head>
+<body>
+
+<div id="time">00:00.00</div>
+
+<button onclick="start()">Start</button>
+<button onclick="stop()">Stop</button>
+<button onclick="reset()">Reset</button>
+
+<script>
+let startTime;
+let timer;
+let elapsed = 0;
+
+function update() {
+  const now = Date.now();
+  const diff = now - startTime + elapsed;
+
+  const minutes = Math.floor(diff / 60000);
+  const seconds = Math.floor((diff % 60000) / 1000);
+  const ms = Math.floor((diff % 1000) / 10);
+
+  document.getElementById("time").textContent =
+    `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}.${String(ms).padStart(2,'0')}`;
+}
+
+function start() {
+  if (timer) return;
+  startTime = Date.now();
+  timer = setInterval(update, 10);
+}
+
+function stop() {
+  if (!timer) return;
+  elapsed += Date.now() - startTime;
+  clearInterval(timer);
+  timer = null;
+}
+
+function reset() {
+  clearInterval(timer);
+  timer = null;
+  elapsed = 0;
+  document.getElementById("time").textContent = "00:00.00";
+}
+</script>
+
+</body>
+</html>

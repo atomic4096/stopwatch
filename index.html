@@ -148,8 +148,9 @@ function resetAll() {
   sections = [];
   saveSections();
   updateDisplay(0);
-  document.getElementById("mainBtn").textContent = "Start";
-  document.getElementById("mainBtn").style.background = "#28a745";
+  const btn = document.getElementById("mainBtn");
+  btn.textContent = "Start";
+  btn.style.background = "#28a745";
   render();
 }
 
@@ -176,17 +177,14 @@ function changeName(secIndex, lapIndex, value) {
   render();
 }
 
-function buildPersonSummary(sec) {
-  const result = {};
+function buildPersonLapData(sec) {
+  const data = {};
   sec.laps.forEach((lap, idx) => {
     if (!lap.name) return;
-    if (!result[lap.name]) {
-      result[lap.name] = { indices: [], laps: [] };
-    }
-    result[lap.name].indices.push(idx);
-    result[lap.name].laps.push(lap);
+    if (!data[lap.name]) data[lap.name] = [];
+    data[lap.name].push({ index: idx, time: lap.time });
   });
-  return result;
+  return data;
 }
 
 function render() {
@@ -200,7 +198,7 @@ function render() {
 
     let html = `<h3>セクション ${si+1}</h3>`;
 
-    // 周回数（人ごと）を計算
+    // ラップ一覧
     const lapCountsByName = {};
     sec.laps.forEach((lap, li) => {
       let lapCount = "";
@@ -221,23 +219,25 @@ function render() {
       `;
     });
 
-    // 人ごとの区間サマリ
-    const summary = buildPersonSummary(sec);
-    const persons = Object.keys(summary);
+    // 周回タイム（人ごと）
+    const personData = buildPersonLapData(sec);
+    const persons = Object.keys(personData);
     if (persons.length > 0) {
       html += `<div class="summary">`;
       persons.forEach(name => {
-        const info = summary[name];
-        if (info.indices.length >= 2) {
-          const firstIdx = info.indices[0];
-          const lastIdx = info.indices[info.indices.length - 1];
-          const total = fromMS(toMS(sec.laps[lastIdx].time) - toMS(sec.laps[firstIdx].time));
-          html += `<div><strong>${name}</strong><br>
-            区間1: LAP${firstIdx+1} → LAP${lastIdx+1} = ${total}<br>`;
-          html += `　LAP${firstIdx+1}: ${sec.laps[firstIdx].time}<br>`;
-          html += `　LAP${lastIdx+1}: ${sec.laps[lastIdx].time}<br>`;
-          html += `</div>`;
-        }
+        const laps = personData[name];
+        if (laps.length === 0) return;
+        html += `<div><strong>${name}</strong><br>`;
+        laps.forEach((lp, i) => {
+          let lapTime;
+          if (i === 0) {
+            lapTime = lp.time; // 周回1はそのまま
+          } else {
+            lapTime = fromMS(toMS(laps[i].time) - toMS(laps[i-1].time));
+          }
+          html += `　周回${i+1}: ${lapTime}<br>`;
+        });
+        html += `</div>`;
       });
       html += `</div>`;
     }

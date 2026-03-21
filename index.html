@@ -10,16 +10,28 @@
     color:#fff;
     font-family:sans-serif;
     margin:0;
+    padding-top:90px;
     padding-bottom:120px;
   }
+
+  /* タイマー固定 */
   #time {
-    font-size:64px;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    background:#111;
+    border-bottom:1px solid #333;
+    font-size:48px;
     text-align:center;
-    margin:16px 0;
+    padding:12px 0;
+    z-index:10;
   }
+
   #sections {
     padding:8px;
   }
+
   .section {
     background:#111;
     border:1px solid #333;
@@ -27,21 +39,43 @@
     padding:10px;
     margin-bottom:10px;
   }
+
+  /* セクションタイトル小さく */
+  .section-title {
+    font-size:16px;
+    margin:0 0 6px 0;
+  }
+
   .lap-row {
     font-size:16px;
     margin:4px 0;
   }
+
   .summary {
     margin-top:8px;
     padding-top:6px;
     border-top:1px dashed #444;
     font-size:14px;
   }
+
   select {
     font-size:14px;
     padding:2px 4px;
     margin-left:6px;
   }
+
+  /* メモ欄 */
+  .memo-input {
+    width:100%;
+    font-size:14px;
+    padding:4px;
+    margin:6px 0 10px 0;
+    border-radius:4px;
+    border:1px solid #444;
+    background:#222;
+    color:#fff;
+  }
+
   .bottom-bar {
     position:fixed;
     left:0;
@@ -89,189 +123,186 @@ let timer = null;
 let startTime = 0;
 let currentSectionIndex = null;
 
-let sections = JSON.parse(localStorage.getItem("sections_v2") || "[]");
+let sections = JSON.parse(localStorage.getItem("sections_v3") || "[]");
 let names = JSON.parse(localStorage.getItem("peopleList") || "[]");
 
-function toMS(t) {
-  const [m, s] = t.split(":");
-  const [sec, ms] = s.split(".");
-  return Number(m)*60000 + Number(sec)*1000 + Number(ms)*10;
+function toMS(t){
+  const [m,s]=t.split(":");
+  const [sec,ms]=s.split(".");
+  return Number(m)*60000+Number(sec)*1000+Number(ms)*10;
 }
-function fromMS(ms) {
-  const m = Math.floor(ms/60000);
-  const s = Math.floor((ms%60000)/1000);
-  const ms2 = Math.floor((ms%1000)/10);
+function fromMS(ms){
+  const m=Math.floor(ms/60000);
+  const s=Math.floor((ms%60000)/1000);
+  const ms2=Math.floor((ms%1000)/10);
   return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(ms2).padStart(2,"0")}`;
 }
 
-function updateDisplay(ms) {
-  document.getElementById("time").textContent = fromMS(ms);
+function updateDisplay(ms){
+  document.getElementById("time").textContent=fromMS(ms);
 }
-function tick() {
-  const now = Date.now();
-  updateDisplay(now - startTime);
+function tick(){
+  updateDisplay(Date.now()-startTime);
 }
 
-function toggleStartStop() {
-  const btn = document.getElementById("mainBtn");
-  if (timer) {
+function toggleStartStop(){
+  const btn=document.getElementById("mainBtn");
+  if(timer){
     clearInterval(timer);
-    timer = null;
-    btn.textContent = "Start";
-    btn.style.background = "#28a745";
+    timer=null;
+    btn.textContent="Start";
+    btn.style.background="#28a745";
     saveSections();
-  } else {
-    startTime = Date.now();
+  }else{
+    startTime=Date.now();
     updateDisplay(0);
-    timer = setInterval(tick, 10);
-    btn.textContent = "Stop";
-    btn.style.background = "#dc3545";
+    timer=setInterval(tick,10);
+    btn.textContent="Stop";
+    btn.style.background="#dc3545";
     startNewSection();
   }
 }
 
-function startNewSection() {
-  const sec = { laps: [] };
+function startNewSection(){
+  const sec={ laps:[], memo:"" };
   sections.push(sec);
-  currentSectionIndex = sections.length - 1;
+  currentSectionIndex=sections.length-1;
   saveSections();
   render();
 }
 
-function resetAll() {
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-  }
-  startTime = 0;
-  currentSectionIndex = null;
-  sections = [];
+function resetAll(){
+  if(timer){ clearInterval(timer); timer=null; }
+  startTime=0;
+  currentSectionIndex=null;
+  sections=[];
   saveSections();
   updateDisplay(0);
-  const btn = document.getElementById("mainBtn");
-  btn.textContent = "Start";
-  btn.style.background = "#28a745";
+  const btn=document.getElementById("mainBtn");
+  btn.textContent="Start";
+  btn.style.background="#28a745";
   render();
 }
 
-function addLap() {
-  if (currentSectionIndex === null) return;
-  const sec = sections[currentSectionIndex];
-  const nowStr = document.getElementById("time").textContent;
-  let diff = nowStr;
-  if (sec.laps.length > 0) {
-    diff = fromMS(toMS(nowStr) - toMS(sec.laps[sec.laps.length - 1].time));
+function addLap(){
+  if(currentSectionIndex===null) return;
+  const sec=sections[currentSectionIndex];
+  const nowStr=document.getElementById("time").textContent;
+  let diff=nowStr;
+  if(sec.laps.length>0){
+    diff=fromMS(toMS(nowStr)-toMS(sec.laps[sec.laps.length-1].time));
   }
-  sec.laps.push({
-    time: nowStr,
-    diff: diff,
-    name: ""
-  });
+  sec.laps.push({ time:nowStr, diff:diff, name:"" });
   saveSections();
   render();
 }
 
-function changeName(secIndex, lapIndex, value) {
-  sections[secIndex].laps[lapIndex].name = value;
+function changeName(si,li,val){
+  sections[si].laps[li].name=val;
   saveSections();
   render();
 }
 
-function buildPersonLapData(sec) {
-  const data = {};
-  sec.laps.forEach((lap, idx) => {
-    if (!lap.name) return;
-    if (!data[lap.name]) data[lap.name] = [];
-    data[lap.name].push({ index: idx, time: lap.time });
+function changeMemo(si,val){
+  sections[si].memo=val;
+  saveSections();
+}
+
+function buildPersonLapData(sec){
+  const data={};
+  sec.laps.forEach((lap,idx)=>{
+    if(!lap.name) return;
+    if(!data[lap.name]) data[lap.name]=[];
+    data[lap.name].push({ index:idx, time:lap.time });
   });
   return data;
 }
 
-function render() {
-  names = JSON.parse(localStorage.getItem("peopleList") || "[]");
-  const container = document.getElementById("sections");
-  container.innerHTML = "";
+function render(){
+  names=JSON.parse(localStorage.getItem("peopleList")||"[]");
+  const container=document.getElementById("sections");
+  container.innerHTML="";
 
-  sections.forEach((sec, si) => {
-    const box = document.createElement("div");
-    box.className = "section";
+  sections.forEach((sec,si)=>{
+    const box=document.createElement("div");
+    box.className="section";
 
-    let html = `<h3>セクション ${si+1}</h3>`;
+    let html=`
+      <h3 class="section-title">セクション ${si+1}</h3>
+      <input class="memo-input" placeholder="メモ（例：1000m × 3本）"
+        value="${sec.memo || ""}"
+        oninput="changeMemo(${si}, this.value)">
+    `;
 
-    // ラップ一覧
-    const lapCountsByName = {};
-    sec.laps.forEach((lap, li) => {
-      let lapCount = "";
-      if (lap.name) {
-        if (!lapCountsByName[lap.name]) lapCountsByName[lap.name] = 0;
-        lapCountsByName[lap.name]++;
-        lapCount = lapCountsByName[lap.name];
+    const lapCounts={};
+    sec.laps.forEach((lap,li)=>{
+      let lapCount="";
+      if(lap.name){
+        if(!lapCounts[lap.name]) lapCounts[lap.name]=0;
+        lapCounts[lap.name]++;
+        lapCount=lapCounts[lap.name];
       }
-      html += `
+      html+=`
         <div class="lap-row">
           LAP${li+1} ${lap.time} (+${lap.diff})
           <select onchange="changeName(${si},${li},this.value)">
             <option value="">未設定</option>
-            ${names.map(n => `<option value="${n}" ${lap.name===n?"selected":""}>${n}</option>`).join("")}
+            ${names.map(n=>`<option value="${n}" ${lap.name===n?"selected":""}>${n}</option>`).join("")}
           </select>
-          ${lap.name ? `　${lap.name}　周回${lapCount}` : ""}
+          ${lap.name ? `　${lap.name} 周回${lapCount}` : ""}
         </div>
       `;
     });
 
-    // 周回タイム（人ごと）
-    const personData = buildPersonLapData(sec);
-    const persons = Object.keys(personData);
-    if (persons.length > 0) {
-      html += `<div class="summary">`;
-      persons.forEach(name => {
-        const laps = personData[name];
-        if (laps.length === 0) return;
-        html += `<div><strong>${name}</strong><br>`;
-        laps.forEach((lp, i) => {
+    const personData=buildPersonLapData(sec);
+    const persons=Object.keys(personData);
+
+    if(persons.length>0){
+      html+=`<div class="summary">`;
+      persons.forEach(name=>{
+        const laps=personData[name];
+        html+=`<div><strong>${name}</strong><br>`;
+        laps.forEach((lp,i)=>{
           let lapTime;
-          if (i === 0) {
-            lapTime = lp.time; // 周回1はそのまま
-          } else {
-            lapTime = fromMS(toMS(laps[i].time) - toMS(laps[i-1].time));
-          }
-          html += `　周回${i+1}: ${lapTime}<br>`;
+          if(i===0) lapTime=lp.time;
+          else lapTime=fromMS(toMS(laps[i].time)-toMS(laps[i-1].time));
+          html+=`　周回${i+1}: ${lapTime}<br>`;
         });
-        html += `</div>`;
+        html+=`</div>`;
       });
-      html += `</div>`;
+      html+=`</div>`;
     }
 
-    box.innerHTML = html;
+    box.innerHTML=html;
     container.appendChild(box);
   });
 }
 
-function downloadCSV() {
-  let csv = "Section,LapIndex,Time,Diff,Name,LapCount\n";
-  sections.forEach((sec, si) => {
-    const lapCountsByName = {};
-    sec.laps.forEach((lap, li) => {
-      let lapCount = "";
-      if (lap.name) {
-        if (!lapCountsByName[lap.name]) lapCountsByName[lap.name] = 0;
-        lapCountsByName[lap.name]++;
-        lapCount = lapCountsByName[lap.name];
+function downloadCSV(){
+  let csv="Section,LapIndex,Time,Diff,Name,LapCount,Memo\n";
+  sections.forEach((sec,si)=>{
+    const lapCounts={};
+    sec.laps.forEach((lap,li)=>{
+      let lapCount="";
+      if(lap.name){
+        if(!lapCounts[lap.name]) lapCounts[lap.name]=0;
+        lapCounts[lap.name]++;
+        lapCount=lapCounts[lap.name];
       }
-      csv += `${si+1},${li+1},${lap.time},${lap.diff},${lap.name || ""},${lapCount}\n`;
+      csv+=`${si+1},${li+1},${lap.time},${lap.diff},${lap.name||""},${lapCount},"${sec.memo||""}"\n`;
     });
   });
-  const blob = new Blob([csv], {type:"text/csv"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "laps.csv";
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="laps.csv";
   a.click();
   URL.revokeObjectURL(url);
 }
 
-function saveSections() {
-  localStorage.setItem("sections_v2", JSON.stringify(sections));
+function saveSections(){
+  localStorage.setItem("sections_v3",JSON.stringify(sections));
 }
 
 render();

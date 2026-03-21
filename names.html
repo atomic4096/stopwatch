@@ -38,11 +38,6 @@
   .delBtn { background:#dc3545; }
   #backBtn { background:#17a2b8; }
 </style>
-
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -56,19 +51,11 @@
 <button id="backBtn" onclick="location.href='index.html'">戻る</button>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBVCmJeQ53o8zch4KKkmt9-sYRzr7DuP0g",
-  authDomain: "stopwatch-app-3141a.firebaseapp.com",
-  projectId: "stopwatch-app-3141a",
-  storageBucket: "stopwatch-app-3141a.firebasestorage.app",
-  messagingSenderId: "775156158989",
-  appId: "1:775156158989:web:27baf16c072483ded67b44"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-firebase.auth().signInAnonymously().catch(console.error);
+let names = JSON.parse(localStorage.getItem("names_local_v1") || "[]");
 
-let names=[];
+function save(){
+  localStorage.setItem("names_local_v1", JSON.stringify(names));
+}
 
 function render(){
   const list=document.getElementById("list");
@@ -88,23 +75,19 @@ function addName(){
   const input=document.getElementById("nameInput");
   const v=input.value.trim();
   if(!v) return;
-  db.collection("names").doc(v).set({
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  }).then(()=>{
-    input.value="";
-  });
+  if(!names.includes(v)) names.push(v);
+  input.value="";
+  save();
+  render();
 }
 
 function delName(name){
-  db.collection("names").doc(name).delete();
+  names = names.filter(n=>n!==name);
+  save();
+  render();
 }
 
-db.collection("names").orderBy("createdAt","asc")
-  .onSnapshot(snap=>{
-    names=[];
-    snap.forEach(doc=>names.push(doc.id));
-    render();
-  });
+render();
 </script>
 </body>
 </html>

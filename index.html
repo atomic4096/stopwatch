@@ -5,7 +5,7 @@
 <title>Section Stopwatch</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- iPhone アプリ化用 -->
+<!-- iPhone アプリ化 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Stopwatch">
@@ -20,7 +20,6 @@
     padding-bottom:120px;
   }
 
-  /* タイマー固定 */
   #time {
     position:fixed;
     top:0;
@@ -34,9 +33,7 @@
     z-index:10;
   }
 
-  #sections {
-    padding:8px;
-  }
+  #sections { padding:8px; }
 
   .section {
     background:#111;
@@ -46,15 +43,8 @@
     margin-bottom:10px;
   }
 
-  .section-title {
-    font-size:16px;
-    margin:0 0 6px 0;
-  }
-
-  .lap-row {
-    font-size:16px;
-    margin:4px 0;
-  }
+  .section-title { font-size:16px; margin:0 0 6px 0; }
+  .lap-row { font-size:16px; margin:4px 0; }
 
   .summary {
     margin-top:8px;
@@ -116,11 +106,6 @@
   #nameBtn { background:#17a2b8; }
   #secBtn { background:#6610f2; }
 </style>
-
-<!-- Firebase SDK（compat 版） -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -136,19 +121,6 @@
 </div>
 
 <script>
-/* ===== Firebase 初期化 ===== */
-const firebaseConfig = {
-  apiKey: "AIzaSyBVCmJeQ53o8zch4KKkmt9-sYRzr7DuP0g",
-  authDomain: "stopwatch-app-3141a.firebaseapp.com",
-  projectId: "stopwatch-app-3141a",
-  storageBucket: "stopwatch-app-3141a.firebasestorage.app",
-  messagingSenderId: "775156158989",
-  appId: "1:775156158989:web:27baf16c072483ded67b44"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-firebase.auth().signInAnonymously().catch(console.error);
-
 /* ===== 時刻変換 ===== */
 function toMS(t){
   const [m,s]=t.split(":");
@@ -163,20 +135,19 @@ function fromMS(ms){
 }
 function todayStr(){
   const d=new Date();
-  const y=d.getFullYear();
-  const m=d.getMonth()+1;
-  const day=d.getDate();
-  return `${y}/${String(m).padStart(2,"0")}/${String(day).padStart(2,"0")}`;
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
 }
 
-/* ===== ローカル状態 ===== */
+/* ===== ローカルデータ ===== */
+let names = JSON.parse(localStorage.getItem("names_local_v1") || "[]");
+let sections = JSON.parse(localStorage.getItem("sections_local_v1") || "[]");
+let savedSections = JSON.parse(localStorage.getItem("saved_sections_v1") || "[]");
+
 let timer=null;
 let startTime=0;
 let currentSectionIndex=null;
-let sections=JSON.parse(localStorage.getItem("sections_local_v1")||"[]");
-let names=[];
 
-/* ===== タイマー表示 ===== */
+/* ===== タイマー ===== */
 function updateDisplay(ms){
   document.getElementById("time").textContent=fromMS(ms);
 }
@@ -192,7 +163,7 @@ function toggleStartStop(){
     timer=null;
     btn.textContent="Start";
     btn.style.background="#28a745";
-    saveLocalSections();
+    saveLocal();
   }else{
     startTime=Date.now();
     updateDisplay(0);
@@ -212,7 +183,7 @@ function startNewSection(){
   };
   sections.push(sec);
   currentSectionIndex=sections.length-1;
-  saveLocalSections();
+  saveLocal();
   render();
 }
 
@@ -222,7 +193,7 @@ function resetAll(){
   startTime=0;
   currentSectionIndex=null;
   sections=[];
-  saveLocalSections();
+  saveLocal();
   updateDisplay(0);
   const btn=document.getElementById("mainBtn");
   btn.textContent="Start";
@@ -240,29 +211,31 @@ function addLap(){
     diff=fromMS(toMS(nowStr)-toMS(sec.laps[sec.laps.length-1].time));
   }
   sec.laps.push({ time:nowStr, diff:diff, name:"" });
-  saveLocalSections();
+  saveLocal();
   render();
 }
 
 /* ===== 名前変更 ===== */
 function changeName(si,li,val){
   sections[si].laps[li].name=val;
-  saveLocalSections();
+  saveLocal();
   render();
 }
 
 /* ===== メモ変更 ===== */
 function changeMemo(si,val){
   sections[si].memo=val;
-  saveLocalSections();
+  saveLocal();
 }
 
 /* ===== ローカル保存 ===== */
-function saveLocalSections(){
+function saveLocal(){
   localStorage.setItem("sections_local_v1",JSON.stringify(sections));
+  localStorage.setItem("saved_sections_v1",JSON.stringify(savedSections));
+  localStorage.setItem("names_local_v1",JSON.stringify(names));
 }
 
-/* ===== 人ごとのラップ抽出 ===== */
+/* ===== 人ごとのラップ ===== */
 function buildPersonLapData(sec){
   const data={};
   sec.laps.forEach((lap,idx)=>{
@@ -273,43 +246,17 @@ function buildPersonLapData(sec){
   return data;
 }
 
-/* ===== セクションを Firestore に保存して非表示 ===== */
-async function saveSectionToCloud(si){
+/* ===== セクション保存（ローカルへ移動） ===== */
+function saveSectionToLocal(si){
   const sec=sections[si];
-  if(!sec || sec.laps.length===0){
-    sections.splice(si,1);
-    saveLocalSections();
-    render();
-    return;
-  }
-  try{
-    await db.collection("sections").add({
-      date: sec.date,
-      memo: sec.memo || "",
-      laps: sec.laps,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    sections.splice(si,1);
-    if(sections.length===0) currentSectionIndex=null;
-    saveLocalSections();
-    render();
-  }catch(e){
-    console.error(e);
-    alert("クラウド保存に失敗しました");
-  }
+  savedSections.push(sec);
+  sections.splice(si,1);
+  if(sections.length===0) currentSectionIndex=null;
+  saveLocal();
+  render();
 }
 
-/* ===== names を Firestore から取得 ===== */
-function subscribeNames(){
-  db.collection("names").orderBy("createdAt","asc")
-    .onSnapshot(snap=>{
-      names=[];
-      snap.forEach(doc=>names.push(doc.id));
-      render();
-    });
-}
-
-/* ===== 画面描画 ===== */
+/* ===== 描画 ===== */
 function render(){
   const container=document.getElementById("sections");
   container.innerHTML="";
@@ -320,8 +267,7 @@ function render(){
 
     let html=`
       <h3 class="section-title">セクション ${si+1}（${sec.date}）</h3>
-      <input class="memo-input" placeholder="メモ（例：1000m × 3本）"
-        value="${sec.memo || ""}"
+      <input class="memo-input" placeholder="メモ" value="${sec.memo}"
         oninput="changeMemo(${si}, this.value)">
     `;
 
@@ -364,15 +310,13 @@ function render(){
       html+=`</div>`;
     }
 
-    html+=`<button class="save-btn" onclick="saveSectionToCloud(${si})">セクションを保存して非表示</button>`;
+    html+=`<button class="save-btn" onclick="saveSectionToLocal(${si})">セクションを保存して非表示</button>`;
 
     box.innerHTML=html;
     container.appendChild(box);
   });
 }
 
-/* ===== 初期化 ===== */
-subscribeNames();
 render();
 </script>
 </body>

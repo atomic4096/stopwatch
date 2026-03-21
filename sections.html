@@ -12,9 +12,7 @@
     margin:0;
     padding:12px 8px 80px;
   }
-  h2 {
-    margin:8px;
-  }
+  h2 { margin:8px; }
   .section {
     background:#111;
     border:1px solid #333;
@@ -22,19 +20,9 @@
     padding:10px;
     margin-bottom:10px;
   }
-  .section-title {
-    font-size:16px;
-    margin:0 0 6px 0;
-  }
-  .memo-text {
-    font-size:14px;
-    margin-bottom:6px;
-    color:#ccc;
-  }
-  .lap-row {
-    font-size:16px;
-    margin:4px 0;
-  }
+  .section-title { font-size:16px; margin:0 0 6px 0; }
+  .memo-text { font-size:14px; margin-bottom:6px; color:#ccc; }
+  .lap-row { font-size:16px; margin:4px 0; }
   .summary {
     margin-top:8px;
     padding-top:6px;
@@ -64,11 +52,6 @@
   #backBtn { background:#17a2b8; }
   #csvBtn { background:#fd7e14; }
 </style>
-
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -81,19 +64,7 @@
 </div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBVCmJeQ53o8zch4KKkmt9-sYRzr7DuP0g",
-  authDomain: "stopwatch-app-3141a.firebaseapp.com",
-  projectId: "stopwatch-app-3141a",
-  storageBucket: "stopwatch-app-3141a.firebasestorage.app",
-  messagingSenderId: "775156158989",
-  appId: "1:775156158989:web:27baf16c072483ded67b44"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-firebase.auth().signInAnonymously().catch(console.error);
-
-let sections=[];
+let savedSections = JSON.parse(localStorage.getItem("saved_sections_v1") || "[]");
 
 function toMS(t){
   const [m,s]=t.split(":");
@@ -121,13 +92,13 @@ function render(){
   const container=document.getElementById("sections");
   container.innerHTML="";
 
-  sections.forEach((sec,idx)=>{
+  savedSections.forEach((sec,idx)=>{
     const box=document.createElement("div");
     box.className="section";
 
     let html=`
-      <h3 class="section-title">セクション ${idx+1}（${sec.date || ""}）</h3>
-      <div class="memo-text">メモ：${sec.memo || ""}</div>
+      <h3 class="section-title">セクション ${idx+1}（${sec.date}）</h3>
+      <div class="memo-text">メモ：${sec.memo}</div>
     `;
 
     const lapCounts={};
@@ -172,68 +143,10 @@ function render(){
 
 /* ===== CSV 出力 ===== */
 function downloadCSV(){
-  if(sections.length===0){
+  if(savedSections.length===0){
     alert("セクションがありません");
     return;
   }
 
-  // 最大周回数を計算
   let maxLaps=0;
-  sections.forEach(sec=>{
-    const personData=buildPersonLapData(sec);
-    Object.values(personData).forEach(laps=>{
-      if(laps.length>maxLaps) maxLaps=laps.length;
-    });
-  });
-
-  let header="日付,セクション,メモ,名前";
-  for(let i=1;i<=maxLaps;i++){
-    header+=`,周回${i}`;
-  }
-  header+="\n";
-
-  let csv=header;
-
-  sections.forEach((sec,idx)=>{
-    const personData=buildPersonLapData(sec);
-    const persons=Object.keys(personData);
-    persons.forEach(name=>{
-      const laps=personData[name];
-      const lapTimes=[];
-      laps.forEach((lp,i)=>{
-        if(i===0) lapTimes.push(lp.time);
-        else lapTimes.push(fromMS(toMS(laps[i].time)-toMS(laps[i-1].time)));
-      });
-      while(lapTimes.length<maxLaps) lapTimes.push("");
-      csv+=`${sec.date || ""},${idx+1},"${sec.memo || ""}",${name},${lapTimes.join(",")}\n`;
-    });
-  });
-
-  const blob=new Blob([csv],{type:"text/csv"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="sections.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-/* ===== Firestore から読み込み ===== */
-db.collection("sections")
-  .orderBy("createdAt","asc")
-  .onSnapshot(snap=>{
-    sections=[];
-    snap.forEach(doc=>{
-      const data=doc.data();
-      sections.push({
-        id: doc.id,
-        date: data.date || "",
-        memo: data.memo || "",
-        laps: data.laps || []
-      });
-    });
-    render();
-  });
-</script>
-</body>
-</html>
+  savedSections

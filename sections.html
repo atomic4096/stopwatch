@@ -29,6 +29,11 @@
     border-top:1px dashed #444;
     font-size:14px;
   }
+  select {
+    font-size:14px;
+    padding:2px 4px;
+    margin-left:6px;
+  }
   .bottom-bar {
     position:fixed;
     left:0;
@@ -66,6 +71,7 @@
 <script>
 /* ===== ローカル読み込み ===== */
 let savedSections = JSON.parse(localStorage.getItem("saved_sections_v1") || "[]");
+let names = JSON.parse(localStorage.getItem("names_local_v1") || "[]");
 
 /* ===== 時刻変換 ===== */
 function toMS(t){
@@ -78,6 +84,13 @@ function fromMS(ms){
   const s=Math.floor((ms%60000)/1000);
   const ms2=Math.floor((ms%1000)/10);
   return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(ms2).padStart(2,"0")}`;
+}
+
+/* ===== 名前変更 ===== */
+function changeSavedName(secIndex, lapIndex, value){
+  savedSections[secIndex].laps[lapIndex].name = value;
+  localStorage.setItem("saved_sections_v1", JSON.stringify(savedSections));
+  render();
 }
 
 /* ===== 名前ごとのラップ ===== */
@@ -113,9 +126,16 @@ function render(){
         lapCounts[lap.name]++;
         lapCount=lapCounts[lap.name];
       }
+
       html+=`
         <div class="lap-row">
           LAP${li+1} ${lap.time} (+${lap.diff})
+
+          <select onchange="changeSavedName(${idx},${li},this.value)">
+            <option value="">未設定</option>
+            ${names.map(n=>`<option value="${n}" ${lap.name===n?"selected":""}>${n}</option>`).join("")}
+          </select>
+
           ${lap.name ? `　${lap.name} 周回${lapCount}` : ""}
         </div>
       `;
@@ -145,7 +165,7 @@ function render(){
   });
 }
 
-/* ===== CSV 出力 ===== */
+/* ===== CSV 出力（BOM付き・文字化け防止） ===== */
 function downloadCSV(){
   if(savedSections.length===0){
     alert("セクションがありません");
@@ -185,7 +205,6 @@ function downloadCSV(){
     });
   });
 
-  /* ★★★ ここが重要：BOM を付ける ★★★ */
   const bom = "\uFEFF";
   const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8" });
 

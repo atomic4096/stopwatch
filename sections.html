@@ -64,8 +64,10 @@
 </div>
 
 <script>
+/* ===== ローカル読み込み ===== */
 let savedSections = JSON.parse(localStorage.getItem("saved_sections_v1") || "[]");
 
+/* ===== 時刻変換 ===== */
 function toMS(t){
   const [m,s]=t.split(":");
   const [sec,ms]=s.split(".");
@@ -78,6 +80,7 @@ function fromMS(ms){
   return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(ms2).padStart(2,"0")}`;
 }
 
+/* ===== 名前ごとのラップ ===== */
 function buildPersonLapData(sec){
   const data={};
   sec.laps.forEach((lap,idx)=>{
@@ -88,6 +91,7 @@ function buildPersonLapData(sec){
   return data;
 }
 
+/* ===== 描画 ===== */
 function render(){
   const container=document.getElementById("sections");
   container.innerHTML="";
@@ -149,4 +153,48 @@ function downloadCSV(){
   }
 
   let maxLaps=0;
-  savedSections
+  savedSections.forEach(sec=>{
+    const personData=buildPersonLapData(sec);
+    Object.values(personData).forEach(laps=>{
+      if(laps.length>maxLaps) maxLaps=laps.length;
+    });
+  });
+
+  let header="日付,セクション,メモ,名前";
+  for(let i=1;i<=maxLaps;i++){
+    header+=`,周回${i}`;
+  }
+  header+="\n";
+
+  let csv=header;
+
+  savedSections.forEach((sec,idx)=>{
+    const personData=buildPersonLapData(sec);
+    const persons=Object.keys(personData);
+
+    persons.forEach(name=>{
+      const laps=personData[name];
+      const lapTimes=[];
+      laps.forEach((lp,i)=>{
+        if(i===0) lapTimes.push(lp.time);
+        else lapTimes.push(fromMS(toMS(laps[i].time)-toMS(laps[i-1].time)));
+      });
+      while(lapTimes.length<maxLaps) lapTimes.push("");
+
+      csv+=`${sec.date},${idx+1},"${sec.memo}",${name},${lapTimes.join(",")}\n`;
+    });
+  });
+
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="sections.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+render();
+</script>
+</body>
+</html>

@@ -12,6 +12,9 @@
     margin:0;
     padding:12px 8px 80px;
   }
+  h2 {
+    margin:8px;
+  }
   .section {
     background:#111;
     border:1px solid #333;
@@ -20,8 +23,13 @@
     margin-bottom:10px;
   }
   .section-title {
-    font-size:16px; /* 小さく */
+    font-size:16px;
     margin:0 0 6px 0;
+  }
+  .memo-text {
+    font-size:14px;
+    margin-bottom:6px;
+    color:#ccc;
   }
   .lap-row {
     font-size:16px;
@@ -32,11 +40,6 @@
     padding-top:6px;
     border-top:1px dashed #444;
     font-size:14px;
-  }
-  .memo-text {
-    font-size:14px;
-    margin-bottom:6px;
-    color:#ccc;
   }
   .bottom-bar {
     position:fixed;
@@ -61,6 +64,11 @@
   #backBtn { background:#17a2b8; }
   #csvBtn { background:#fd7e14; }
 </style>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -73,7 +81,19 @@
 </div>
 
 <script>
-let sections=JSON.parse(localStorage.getItem("sections_v3")||"[]");
+const firebaseConfig = {
+  apiKey: "AIzaSyBVCmJeQ53o8zch4KKkmt9-sYRzr7DuP0g",
+  authDomain: "stopwatch-app-3141a.firebaseapp.com",
+  projectId: "stopwatch-app-3141a",
+  storageBucket: "stopwatch-app-3141a.firebasestorage.app",
+  messagingSenderId: "775156158989",
+  appId: "1:775156158989:web:27baf16c072483ded67b44"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+firebase.auth().signInAnonymously().catch(console.error);
+
+let sections=[];
 
 function toMS(t){
   const [m,s]=t.split(":");
@@ -101,12 +121,12 @@ function render(){
   const container=document.getElementById("sections");
   container.innerHTML="";
 
-  sections.forEach((sec,si)=>{
+  sections.forEach((sec,idx)=>{
     const box=document.createElement("div");
     box.className="section";
 
     let html=`
-      <h3 class="section-title">セクション ${si+1}</h3>
+      <h3 class="section-title">セクション ${idx+1}（${sec.date || ""}）</h3>
       <div class="memo-text">メモ：${sec.memo || ""}</div>
     `;
 
@@ -150,17 +170,70 @@ function render(){
   });
 }
 
+/* ===== CSV 出力 ===== */
 function downloadCSV(){
-  let csv="Section,LapIndex,Time,Diff,Name,LapCount,Memo\n";
-  sections.forEach((sec,si)=>{
-    const lapCounts={};
-    sec.laps.forEach((lap,li)=>{
-      let lapCount="";
-      if(lap.name){
-        if(!lapCounts[lap.name]) lapCounts[lap.name]=0;
-        lapCounts[lap.name]++;
-        lapCount=lapCounts[lap.name];
-      }
-      csv+=`${si+1},${li+1},${lap.time},${lap.diff},${lap.name||""},${lapCount},"${sec.memo||""}"\n`;
+  if(sections.length===0){
+    alert("セクションがありません");
+    return;
+  }
+
+  // 最大周回数を計算
+  let maxLaps=0;
+  sections.forEach(sec=>{
+    const personData=buildPersonLapData(sec);
+    Object.values(personData).forEach(laps=>{
+      if(laps.length>maxLaps) maxLaps=laps.length;
     });
- 
+  });
+
+  let header="日付,セクション,メモ,名前";
+  for(let i=1;i<=maxLaps;i++){
+    header+=`,周回${i}`;
+  }
+  header+="\n";
+
+  let csv=header;
+
+  sections.forEach((sec,idx)=>{
+    const personData=buildPersonLapData(sec);
+    const persons=Object.keys(personData);
+    persons.forEach(name=>{
+      const laps=personData[name];
+      const lapTimes=[];
+      laps.forEach((lp,i)=>{
+        if(i===0) lapTimes.push(lp.time);
+        else lapTimes.push(fromMS(toMS(laps[i].time)-toMS(laps[i-1].time)));
+      });
+      while(lapTimes.length<maxLaps) lapTimes.push("");
+      csv+=`${sec.date || ""},${idx+1},"${sec.memo || ""}",${name},${lapTimes.join(",")}\n`;
+    });
+  });
+
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="sections.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ===== Firestore から読み込み ===== */
+db.collection("sections")
+  .orderBy("createdAt","asc")
+  .onSnapshot(snap=>{
+    sections=[];
+    snap.forEach(doc=>{
+      const data=doc.data();
+      sections.push({
+        id: doc.id,
+        date: data.date || "",
+        memo: data.memo || "",
+        laps: data.laps || []
+      });
+    });
+    render();
+  });
+</script>
+</body>
+</html>

@@ -106,6 +106,7 @@ const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let names = [];
+let currentList = []; // ← 追加：最新のセクション一覧を保持
 
 // 名前リスト同期
 db.collection("names").doc("shared").onSnapshot(doc => {
@@ -116,9 +117,9 @@ db.collection("names").doc("shared").onSnapshot(doc => {
 db.collection("sections")
   .orderBy("timestamp", "desc")
   .onSnapshot(snapshot => {
-    const list = [];
-    snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-    render(list);
+    currentList = []; // ← 更新
+    snapshot.forEach(doc => currentList.push({ id: doc.id, ...doc.data() }));
+    render(currentList);
   });
 
 // 時刻変換
@@ -134,10 +135,21 @@ function formatCSVTime(ms){
   return `${m}:${String(s).padStart(2,"0")}.${String(ms2).padStart(2,"0")}`;
 }
 
-// 名前割り当て
+// 🔥 安全な名前変更（laps 全体を上書き）
 function changeName(secId, lapIndex, value){
+  const sec = currentList.find(s => s.id === secId);
+  if (!sec) return;
+
+  // laps を安全化
+  if (!Array.isArray(sec.laps)) {
+    sec.laps = Object.values(sec.laps || {});
+  }
+
+  sec.laps[lapIndex].name = value;
+
+  // laps 全体を上書き（部分更新は絶対に使わない）
   db.collection("sections").doc(secId).update({
-    [`laps.${lapIndex}.name`]: value
+    laps: sec.laps
   });
 }
 
@@ -159,7 +171,7 @@ function render(list){
 
   list.forEach((sec,idx)=>{
 
-    // ★ laps を最初に安全化（ここが最重要）
+    // laps を最初に安全化
     if (!Array.isArray(sec.laps)) {
       sec.laps = Object.values(sec.laps || {});
     }

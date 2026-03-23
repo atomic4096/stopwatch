@@ -3,21 +3,59 @@
 <head>
 <meta charset="UTF-8">
 <title>名前管理</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body {
+    background:#000;
+    color:#fff;
+    font-family:sans-serif;
+    margin:20px;
+    text-align:center;
+  }
+  .card {
+    background:#111;
+    border:1px solid #333;
+    border-radius:8px;
+    padding:6px;
+    margin:6px 0;
+    font-size:14px;
+  }
+  input {
+    width:80%;
+    font-size:16px;
+    padding:6px;
+    margin-bottom:8px;
+  }
+  button {
+    font-size:14px;
+    padding:8px 16px;
+    border:none;
+    border-radius:6px;
+    color:#fff;
+    margin:4px;
+  }
+  #addBtn { background:#28a745; }
+  .delBtn { background:#dc3545; }
+  #backBtn { background:#17a2b8; }
+</style>
 </head>
 <body>
 
 <h2>名前管理</h2>
 
-<input id="newName" placeholder="名前を入力">
-<button onclick="addName()">追加</button>
+<input id="nameInput" type="text" placeholder="名前を入力">
+<button id="addBtn" onclick="addName()">追加</button>
 
-<h3>名前一覧</h3>
-<div id="nameList"></div>
+<div id="list"></div>
 
+<button id="backBtn" onclick="location.href='index.html'">戻る</button>
+
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
 
 <script>
+// あなたの Firebase 設定
 const firebaseConfig = {
   apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
   authDomain: "stopwatch-app-21e5f.firebaseapp.com",
@@ -32,32 +70,48 @@ const db = firebase.firestore();
 
 let names = [];
 
+// Firestore からリアルタイム取得
 db.collection("names").doc("shared").onSnapshot(doc => {
-  if (doc.exists) names = doc.data().list;
-  renderNames();
+  if (doc.exists) {
+    names = doc.data().list;
+  } else {
+    names = [];
+  }
+  render();
 });
 
-function addName() {
-  const name = document.getElementById("newName").value.trim();
-  if (!name) return;
-  names.push(name);
-  db.collection("names").doc("shared").set({ list: names });
-  document.getElementById("newName").value = "";
-}
-
-function deleteName(n) {
-  names = names.filter(x => x !== n);
+// Firestore に保存
+function save() {
   db.collection("names").doc("shared").set({ list: names });
 }
 
-function renderNames() {
-  const container = document.getElementById("nameList");
-  container.innerHTML = "";
+function render() {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+
   names.forEach(n => {
     const div = document.createElement("div");
-    div.innerHTML = `${n} <button onclick="deleteName('${n}')">削除</button>`;
-    container.appendChild(div);
+    div.className = "card";
+    div.innerHTML = `
+      ${n}
+      <button class="delBtn" onclick="delName('${n}')">削除</button>
+    `;
+    list.appendChild(div);
   });
+}
+
+function addName() {
+  const input = document.getElementById("nameInput");
+  const v = input.value.trim();
+  if (!v) return;
+  if (!names.includes(v)) names.push(v);
+  input.value = "";
+  save();
+}
+
+function delName(name) {
+  names = names.filter(n => n !== name);
+  save();
 }
 </script>
 

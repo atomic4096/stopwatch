@@ -2,322 +2,124 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Section Stopwatch</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<!-- iPhone アプリ化 -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Stopwatch">
-
+<title>Stopwatch</title>
 <style>
-  body {
-    background:#000;
-    color:#fff;
-    font-family:sans-serif;
-    margin:0;
-    padding-top:90px;
-    padding-bottom:120px;
-  }
-
-  #time {
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    background:#111;
-    border-bottom:1px solid #333;
-    font-size:48px;
-    text-align:center;
-    padding:12px 0;
-    z-index:10;
-  }
-
-  #sections { padding:8px; }
-
-  .section {
-    background:#111;
-    border:1px solid #333;
-    border-radius:8px;
-    padding:10px;
-    margin-bottom:10px;
-  }
-
-  .section-title { font-size:16px; margin:0 0 6px 0; }
-  .lap-row { font-size:16px; margin:4px 0; }
-
-  .summary {
-    margin-top:8px;
-    padding-top:6px;
-    border-top:1px dashed #444;
-    font-size:14px;
-  }
-
-  select {
-    font-size:14px;
-    padding:2px 4px;
-    margin-left:6px;
-  }
-
-  .memo-input {
-    width:100%;
-    font-size:14px;
-    padding:4px;
-    margin:6px 0 10px 0;
-    border-radius:4px;
-    border:1px solid #444;
-    background:#222;
-    color:#fff;
-  }
-
-  .save-btn {
-    margin-top:6px;
-    padding:6px 10px;
-    font-size:14px;
-    border:none;
-    border-radius:4px;
-    background:#fd7e14;
-    color:#fff;
-  }
-
-  .bottom-bar {
-    position:fixed;
-    left:0;
-    bottom:0;
-    width:100%;
-    background:#111;
-    border-top:1px solid #333;
-    padding:8px 4px;
-    display:flex;
-    gap:4px;
-    box-sizing:border-box;
-  }
-  .bottom-bar button {
-    flex:1;
-    padding:10px 0;
-    font-size:16px;
-    border:none;
-    border-radius:6px;
-    color:#fff;
-  }
-  #mainBtn { background:#28a745; }
-  #lapBtn { background:#007bff; }
-  #resetBtn { background:#6c757d; }
-  #nameBtn { background:#17a2b8; }
-  #secBtn { background:#6610f2; }
+  body { font-family: sans-serif; padding: 20px; }
+  .lap-item { margin: 5px 0; }
 </style>
 </head>
 <body>
 
-<div id="time">00:00.00</div>
-<div id="sections"></div>
+<h2>ストップウォッチ</h2>
 
-<div class="bottom-bar">
-  <button id="mainBtn" onclick="toggleStartStop()">Start</button>
-  <button id="lapBtn" onclick="addLap()">Lap</button>
-  <button id="resetBtn" onclick="resetAll()">Reset</button>
-  <button id="nameBtn" onclick="location.href='names.html'">名前</button>
-  <button id="secBtn" onclick="location.href='sections.html'">セクション</button>
-</div>
+<div id="timer" style="font-size: 40px;">00:00.00</div>
+
+<button onclick="startTimer()">Start</button>
+<button onclick="stopTimer()">Stop</button>
+<button onclick="resetTimer()">Reset</button>
+
+<h3>ラップ</h3>
+<div id="laps"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
 
 <script>
-/* ===== 時刻変換 ===== */
-function toMS(t){
-  const [m,s]=t.split(":");
-  const [sec,ms]=s.split(".");
-  return Number(m)*60000+Number(sec)*1000+Number(ms)*10;
-}
-function fromMS(ms){
-  const m=Math.floor(ms/60000);
-  const s=Math.floor((ms%60000)/1000);
-  const ms2=Math.floor((ms%1000)/10);
-  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(ms2).padStart(2,"0")}`;
-}
-function todayStr(){
-  const d=new Date();
-  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
+const firebaseConfig = {
+  apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
+  authDomain: "stopwatch-app-21e5f.firebaseapp.com",
+  projectId: "stopwatch-app-21e5f",
+  storageBucket: "stopwatch-app-21e5f.firebasestorage.app",
+  messagingSenderId: "326918590564",
+  appId: "1:326918590564:web:de3f433f71994d0a698f71"
+};
+
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let startTime = 0;
+let running = false;
+let laps = [];
+let timerInterval = null;
+let names = [];
+
+// 名前リストを同期
+db.collection("names").doc("shared").onSnapshot(doc => {
+  if (doc.exists) names = doc.data().list;
+  renderLaps();
+});
+
+function formatTime(ms) {
+  const t = ms / 1000;
+  const m = Math.floor(t / 60);
+  const s = (t % 60).toFixed(2).padStart(5, "0");
+  return `${String(m).padStart(2, "0")}:${s}`;
 }
 
-/* ===== ローカルデータ ===== */
-let names = JSON.parse(localStorage.getItem("names_local_v1") || "[]");
-let sections = JSON.parse(localStorage.getItem("sections_local_v1") || "[]");
-let savedSections = JSON.parse(localStorage.getItem("saved_sections_v1") || "[]");
-
-let timer=null;
-let startTime=0;
-let currentSectionIndex=null;
-
-/* ===== タイマー ===== */
-function updateDisplay(ms){
-  document.getElementById("time").textContent=fromMS(ms);
-}
-function tick(){
-  updateDisplay(Date.now()-startTime);
+function updateTimer() {
+  const now = Date.now();
+  document.getElementById("timer").textContent = formatTime(now - startTime);
 }
 
-/* ===== Start / Stop ===== */
-function toggleStartStop(){
-  const btn=document.getElementById("mainBtn");
-  if(timer){
-    clearInterval(timer);
-    timer=null;
-    btn.textContent="Start";
-    btn.style.background="#28a745";
-    saveLocal();
-  }else{
-    startTime=Date.now();
-    updateDisplay(0);
-    timer=setInterval(tick,10);
-    btn.textContent="Stop";
-    btn.style.background="#dc3545";
-    startNewSection();
-  }
+function startTimer() {
+  if (running) return;
+  running = true;
+  startTime = Date.now();
+  timerInterval = setInterval(updateTimer, 10);
 }
 
-/* ===== 新しいセクション ===== */
-function startNewSection(){
-  const sec={
-    date: todayStr(),
-    memo:"",
-    laps:[]
+async function stopTimer() {
+  if (!running) return;
+  running = false;
+  clearInterval(timerInterval);
+
+  const memo = prompt("セクションのメモを入力してください", "");
+  if (memo === null) return;
+
+  const section = {
+    timestamp: Date.now(),
+    memo: memo,
+    laps: laps,
+    names: {}
   };
-  sections.push(sec);
-  currentSectionIndex=sections.length-1;
-  saveLocal();
-  render();
+
+  await db.collection("sections").add(section);
+
+  laps = [];
+  renderLaps();
+  document.getElementById("timer").textContent = "00:00.00";
 }
 
-/* ===== Reset ===== */
-function resetAll(){
-  if(timer){ clearInterval(timer); timer=null; }
-  startTime=0;
-  currentSectionIndex=null;
-  sections=[];
-  saveLocal();
-  updateDisplay(0);
-  const btn=document.getElementById("mainBtn");
-  btn.textContent="Start";
-  btn.style.background="#28a745";
-  render();
+function resetTimer() {
+  running = false;
+  clearInterval(timerInterval);
+  laps = [];
+  renderLaps();
+  document.getElementById("timer").textContent = "00:00.00";
 }
 
-/* ===== Lap ===== */
-function addLap(){
-  if(currentSectionIndex===null) return;
-  const sec=sections[currentSectionIndex];
-  const nowStr=document.getElementById("time").textContent;
-  let diff=nowStr;
-  if(sec.laps.length>0){
-    diff=fromMS(toMS(nowStr)-toMS(sec.laps[sec.laps.length-1].time));
-  }
-  sec.laps.push({ time:nowStr, diff:diff, name:"" });
-  saveLocal();
-  render();
-}
+function renderLaps() {
+  const container = document.getElementById("laps");
+  container.innerHTML = "";
 
-/* ===== 名前変更 ===== */
-function changeName(si,li,val){
-  sections[si].laps[li].name=val;
-  saveLocal();
-  render();
-}
+  laps.forEach((lap, i) => {
+    const div = document.createElement("div");
+    div.className = "lap-item";
 
-/* ===== メモ変更 ===== */
-function changeMemo(si,val){
-  sections[si].memo=val;
-  saveLocal();
-}
+    const select = document.createElement("select");
+    select.innerHTML = `<option value="">未割り当て</option>` +
+      names.map(n => `<option value="${n}">${n}</option>`).join("");
 
-/* ===== ローカル保存 ===== */
-function saveLocal(){
-  localStorage.setItem("sections_local_v1",JSON.stringify(sections));
-  localStorage.setItem("saved_sections_v1",JSON.stringify(savedSections));
-  localStorage.setItem("names_local_v1",JSON.stringify(names));
-}
+    select.onchange = () => {
+      laps[i].name = select.value;
+    };
 
-/* ===== 人ごとのラップ ===== */
-function buildPersonLapData(sec){
-  const data={};
-  sec.laps.forEach((lap,idx)=>{
-    if(!lap.name) return;
-    if(!data[lap.name]) data[lap.name]=[];
-    data[lap.name].push({ index:idx, time:lap.time });
-  });
-  return data;
-}
-
-/* ===== セクション保存（ローカルへ移動） ===== */
-function saveSectionToLocal(si){
-  const sec=sections[si];
-  savedSections.push(sec);
-  sections.splice(si,1);
-  if(sections.length===0) currentSectionIndex=null;
-  saveLocal();
-  render();
-}
-
-/* ===== 描画 ===== */
-function render(){
-  const container=document.getElementById("sections");
-  container.innerHTML="";
-
-  sections.forEach((sec,si)=>{
-    const box=document.createElement("div");
-    box.className="section";
-
-    let html=`
-      <h3 class="section-title">セクション ${si+1}（${sec.date}）</h3>
-      <input class="memo-input" placeholder="メモ" value="${sec.memo}"
-        oninput="changeMemo(${si}, this.value)">
-    `;
-
-    const lapCounts={};
-    sec.laps.forEach((lap,li)=>{
-      let lapCount="";
-      if(lap.name){
-        if(!lapCounts[lap.name]) lapCounts[lap.name]=0;
-        lapCounts[lap.name]++;
-        lapCount=lapCounts[lap.name];
-      }
-      html+=`
-        <div class="lap-row">
-          LAP${li+1} ${lap.time} (+${lap.diff})
-          <select onchange="changeName(${si},${li},this.value)">
-            <option value="">未設定</option>
-            ${names.map(n=>`<option value="${n}" ${lap.name===n?"selected":""}>${n}</option>`).join("")}
-          </select>
-          ${lap.name ? `　${lap.name} 周回${lapCount}` : ""}
-        </div>
-      `;
-    });
-
-    const personData=buildPersonLapData(sec);
-    const persons=Object.keys(personData);
-
-    if(persons.length>0){
-      html+=`<div class="summary">`;
-      persons.forEach(name=>{
-        const laps=personData[name];
-        html+=`<div><strong>${name}</strong><br>`;
-        laps.forEach((lp,i)=>{
-          let lapTime;
-          if(i===0) lapTime=lp.time;
-          else lapTime=fromMS(toMS(laps[i].time)-toMS(laps[i-1].time));
-          html+=`　周回${i+1}: ${lapTime}<br>`;
-        });
-        html+=`</div>`;
-      });
-      html+=`</div>`;
-    }
-
-    html+=`<button class="save-btn" onclick="saveSectionToLocal(${si})">セクションを保存して非表示</button>`;
-
-    box.innerHTML=html;
-    container.appendChild(box);
+    div.textContent = `${i + 1}：${formatTime(lap.time)} `;
+    div.appendChild(select);
+    container.appendChild(div);
   });
 }
-
-render();
 </script>
+
 </body>
 </html>

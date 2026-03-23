@@ -170,7 +170,9 @@ function render(list){
       : "00:00.00";
 
     const counts = {};
-    sec.laps.forEach(l=>{
+    // laps が存在しない or 配列でない場合は空配列にする
+if (!Array.isArray(sec.laps)) sec.laps = [];
+sec.laps.forEach(l=>{
       if(l.name){
         if(!counts[l.name]) counts[l.name]=0;
         counts[l.name]++;

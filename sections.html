@@ -29,7 +29,6 @@
     margin-bottom:6px;
   }
 
-  .memo-text { font-size:14px; margin-bottom:6px; color:#ccc; }
   .lap-row { font-size:16px; margin:4px 0; }
 
   .summary {
@@ -159,6 +158,12 @@ function render(list){
   container.innerHTML="";
 
   list.forEach((sec,idx)=>{
+
+    // ★ laps を最初に安全化（ここが最重要）
+    if (!Array.isArray(sec.laps)) {
+      sec.laps = Object.values(sec.laps || {});
+    }
+
     const box=document.createElement("div");
     box.className="section";
 
@@ -170,9 +175,7 @@ function render(list){
       : "00:00.00";
 
     const counts = {};
-    // laps が存在しない or 配列でない場合は空配列にする
-if (!Array.isArray(sec.laps)) sec.laps = [];
-sec.laps.forEach(l=>{
+    sec.laps.forEach(l=>{
       if(l.name){
         if(!counts[l.name]) counts[l.name]=0;
         counts[l.name]++;
@@ -250,7 +253,7 @@ sec.laps.forEach(l=>{
   });
 }
 
-// CSV 出力
+// CSV 出力（そのままでOK）
 function downloadCSV(){
   db.collection("sections").orderBy("timestamp","asc").get().then(snapshot=>{
     const list=[];

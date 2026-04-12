@@ -4,15 +4,60 @@
 <meta charset="UTF-8">
 <title>セクション一覧</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
   body {
     background:#000;
     color:#fff;
     font-family:sans-serif;
     margin:0;
-    padding:12px 8px 80px;
+    padding:0;
   }
-  h2 { margin:8px; }
+
+  /* 上部固定バー */
+  .top-bar {
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    background:#111;
+    border-bottom:1px solid #333;
+    padding:10px;
+    z-index:10;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+
+  .top-btn {
+    background:#17a2b8;
+    color:#fff;
+    border:none;
+    padding:8px 12px;
+    border-radius:6px;
+    font-size:16px;
+  }
+
+  .csv-btn {
+    background:#fd7e14;
+    color:#fff;
+    border:none;
+    padding:8px 12px;
+    border-radius:6px;
+    font-size:16px;
+  }
+
+  .title {
+    font-size:18px;
+    font-weight:bold;
+  }
+
+  /* スクロール領域 */
+  .content {
+    padding:70px 10px 20px;
+    height:calc(100vh - 70px);
+    overflow-y:auto;
+  }
 
   .section {
     background:#111;
@@ -29,19 +74,39 @@
     margin-bottom:6px;
   }
 
-  .lap-row { font-size:16px; margin:4px 0; }
-
-  .summary {
-    margin-top:8px;
-    padding-top:6px;
-    border-top:1px dashed #444;
+  .info {
     font-size:14px;
+    margin-bottom:8px;
+    color:#ccc;
+  }
+
+  .info input {
+    width:100%;
+    padding:6px;
+    margin:4px 0;
+    border-radius:6px;
+    border:1px solid #444;
+    background:#222;
+    color:#fff;
+    font-size:14px;
+  }
+
+  .lap-row {
+    font-size:16px;
+    margin:4px 0;
   }
 
   select {
     font-size:14px;
     padding:2px 4px;
     margin-left:6px;
+  }
+
+  .summary {
+    margin-top:8px;
+    padding-top:6px;
+    border-top:1px dashed #444;
+    font-size:14px;
   }
 
   .deleteBtn {
@@ -52,39 +117,20 @@
     border-radius:6px;
     margin-top:10px;
   }
-
-  .bottom-bar {
-    position:fixed;
-    left:0;
-    bottom:0;
-    width:100%;
-    background:#111;
-    border-top:1px solid #333;
-    padding:8px 4px;
-    display:flex;
-    gap:4px;
-    box-sizing:border-box;
-  }
-  .bottom-bar button {
-    flex:1;
-    padding:10px 0;
-    font-size:16px;
-    border:none;
-    border-radius:6px;
-    color:#fff;
-  }
-  #backBtn { background:#17a2b8; }
-  #csvBtn { background:#fd7e14; }
 </style>
 </head>
 <body>
 
-<h2>セクション一覧</h2>
-<div id="sections"></div>
+<!-- 上部固定バー -->
+<div class="top-bar">
+  <button class="top-btn" onclick="location.href='index.html'">戻る</button>
+  <div class="title">セクション一覧</div>
+  <button class="csv-btn" onclick="downloadCSV()">CSV</button>
+</div>
 
-<div class="bottom-bar">
-  <button id="backBtn" onclick="location.href='index.html'">戻る</button>
-  <button id="csvBtn" onclick="downloadCSV()">CSV</button>
+<!-- スクロール領域 -->
+<div class="content">
+  <div id="sections"></div>
 </div>
 
 <!-- Firebase -->
@@ -92,7 +138,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <script>
-// Firebase 設定
+/* Firebase 設定 */
 const firebaseConfig = {
   apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
   authDomain: "stopwatch-app-21e5f.firebaseapp.com",
@@ -106,23 +152,23 @@ const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let names = [];
-let currentList = []; // ← 追加：最新のセクション一覧を保持
+let currentList = [];
 
-// 名前リスト同期
+/* 名前リスト同期 */
 db.collection("names").doc("shared").onSnapshot(doc => {
   if (doc.exists) names = doc.data().list;
 });
 
-// Firestore からセクション一覧を取得（新しい順）
+/* セクション一覧取得 */
 db.collection("sections")
   .orderBy("timestamp", "desc")
   .onSnapshot(snapshot => {
-    currentList = []; // ← 更新
+    currentList = [];
     snapshot.forEach(doc => currentList.push({ id: doc.id, ...doc.data() }));
     render(currentList);
   });
 
-// 時刻変換
+/* 時刻変換 */
 function toMS(t){
   const [m,s]=t.split(":");
   const [sec,ms]=s.split(".");
@@ -135,25 +181,30 @@ function formatCSVTime(ms){
   return `${m}:${String(s).padStart(2,"0")}.${String(ms2).padStart(2,"0")}`;
 }
 
-// 🔥 安全な名前変更（laps 全体を上書き）
+/* 名前変更（安全に全体上書き） */
 function changeName(secId, lapIndex, value){
   const sec = currentList.find(s => s.id === secId);
   if (!sec) return;
 
-  // laps を安全化
   if (!Array.isArray(sec.laps)) {
     sec.laps = Object.values(sec.laps || {});
   }
 
   sec.laps[lapIndex].name = value;
 
-  // laps 全体を上書き（部分更新は絶対に使わない）
   db.collection("sections").doc(secId).update({
     laps: sec.laps
   });
 }
 
-// 人ごとのラップ
+/* 練習内容・天気・風の編集 */
+function updateField(secId, field, value){
+  db.collection("sections").doc(secId).update({
+    [field]: value
+  });
+}
+
+/* 人ごとのラップ */
 function buildPersonLapData(sec){
   const data={};
   sec.laps.forEach((lap,idx)=>{
@@ -164,14 +215,13 @@ function buildPersonLapData(sec){
   return data;
 }
 
-// 描画
+/* 描画 */
 function render(list){
   const container=document.getElementById("sections");
   container.innerHTML="";
 
-  list.forEach((sec,idx)=>{
+  list.forEach(sec => {
 
-    // laps を最初に安全化
     if (!Array.isArray(sec.laps)) {
       sec.laps = Object.values(sec.laps || {});
     }
@@ -181,29 +231,27 @@ function render(list){
 
     const header=document.createElement("div");
     header.className="header";
-
-    const total = sec.laps.length > 0
-      ? sec.laps[sec.laps.length-1].time
-      : "00:00.00";
-
-    const counts = {};
-    sec.laps.forEach(l=>{
-      if(l.name){
-        if(!counts[l.name]) counts[l.name]=0;
-        counts[l.name]++;
-      }
-    });
-
-    const countText = Object.entries(counts)
-      .map(([n,c])=>`${n}${c}周`)
-      .join(" / ") || "周回なし";
-
-    header.textContent =
-      `${sec.memo}（${sec.date}｜${total}｜${countText}）`;
+    header.textContent = `${sec.date}｜${sec.practice || ""}`;
 
     const body=document.createElement("div");
     body.style.display="none";
 
+    /* 練習内容・天気・風 */
+    body.innerHTML += `
+      <div class="info">
+        <div>練習内容</div>
+        <input value="${sec.practice || ""}" 
+          oninput="updateField('${sec.id}', 'practice', this.value)">
+        <div>天気</div>
+        <input value="${sec.weather || ""}" 
+          oninput="updateField('${sec.id}', 'weather', this.value)">
+        <div>風</div>
+        <input value="${sec.wind || ""}" 
+          oninput="updateField('${sec.id}', 'wind', this.value)">
+      </div>
+    `;
+
+    /* ラップ一覧 */
     sec.laps.forEach((lap,li)=>{
       const row=document.createElement("div");
       row.className="lap-row";
@@ -222,6 +270,7 @@ function render(list){
       body.appendChild(row);
     });
 
+    /* 人ごとのまとめ */
     const personData=buildPersonLapData(sec);
     const persons=Object.keys(personData);
 
@@ -245,6 +294,7 @@ function render(list){
       body.appendChild(sum);
     }
 
+    /* 削除ボタン */
     const del=document.createElement("button");
     del.className="deleteBtn";
     del.textContent="削除";
@@ -265,7 +315,7 @@ function render(list){
   });
 }
 
-// CSV 出力（そのままでOK）
+/* CSV 出力 */
 function downloadCSV(){
   db.collection("sections").orderBy("timestamp","asc").get().then(snapshot=>{
     const list=[];
@@ -284,7 +334,7 @@ function downloadCSV(){
       });
     });
 
-    let header="日付,メモ,名前";
+    let header="日付,練習内容,天気,風,名前";
     for(let i=1;i<=maxLaps;i++){
       header+=`,周回${i}`;
     }
@@ -307,7 +357,7 @@ function downloadCSV(){
 
         while(lapTimes.length<maxLaps) lapTimes.push("");
 
-        csv+=`${sec.date},"${sec.memo}",${name},${lapTimes.join(",")}\n`;
+        csv+=`${sec.date},"${sec.practice || ""}","${sec.weather || ""}","${sec.wind || ""}",${name},${lapTimes.join(",")}\n`;
       });
     });
 

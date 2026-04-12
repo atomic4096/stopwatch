@@ -1,377 +1,151 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>Section Stopwatch</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- iPhone アプリ化 -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Stopwatch">
+    <title>Section Stopwatch</title>
 
-<style>
-  body {
-    background:#000;
-    color:#fff;
-    font-family:sans-serif;
-    margin:0;
-    padding:0;
-  }
+    <!-- PWA設定 -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/icon-180.png">
 
-  /* 上部固定バー */
-  .top-bar {
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    background:#111;
-    border-bottom:1px solid #333;
-    padding:10px;
-    z-index:20;
-    text-align:center;
-    font-size:20px;
-    font-weight:bold;
-  }
+    <!-- スプラッシュ画像 -->
+    <link rel="apple-touch-startup-image" href="assets/splash-640x1136.png" media="(device-width: 320px)">
+    <link rel="apple-touch-startup-image" href="assets/splash-750x1334.png" media="(device-width: 375px)">
+    <link rel="apple-touch-startup-image" href="assets/splash-1125x2436.png" media="(device-width: 414px)">
 
-  /* タイマー表示（固定） */
-  #time {
-    position:fixed;
-    top:50px;
-    left:0;
-    width:100%;
-    background:#111;
-    border-bottom:1px solid #333;
-    font-size:48px;
-    text-align:center;
-    padding:12px 0;
-    z-index:10;
-  }
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Stopwatch">
 
-  /* スクロール領域（ラップ一覧） */
-  .content {
-    position:fixed;
-    top:130px;
-    bottom:80px;
-    left:0;
-    right:0;
-    overflow-y:auto;
-    padding:10px;
-  }
-
-  .section {
-    background:#111;
-    border:1px solid #333;
-    border-radius:8px;
-    padding:10px;
-    margin-bottom:10px;
-  }
-
-  .section-title { font-size:16px; margin:0 0 6px 0; }
-  .lap-row { font-size:16px; margin:4px 0; }
-
-  select {
-    font-size:14px;
-    padding:2px 4px;
-    margin-left:6px;
-  }
-
-  .summary {
-    margin-top:8px;
-    padding-top:6px;
-    border-top:1px dashed #444;
-    font-size:14px;
-  }
-
-  .save-btn {
-    margin-top:6px;
-    padding:6px 10px;
-    font-size:14px;
-    border:none;
-    border-radius:4px;
-    background:#fd7e14;
-    color:#fff;
-  }
-
-  /* 下部固定バー */
-  .bottom-bar {
-    position:fixed;
-    left:0;
-    bottom:0;
-    width:100%;
-    background:#111;
-    border-top:1px solid #333;
-    padding:8px 4px;
-    display:flex;
-    gap:4px;
-    box-sizing:border-box;
-    z-index:20;
-  }
-  .bottom-bar button {
-    flex:1;
-    padding:10px 0;
-    font-size:16px;
-    border:none;
-    border-radius:6px;
-    color:#fff;
-  }
-  #mainBtn { background:#28a745; }
-  #lapBtn { background:#007bff; }
-  #nameBtn { background:#17a2b8; }
-  #secBtn { background:#6610f2; }
-</style>
-</head>
-<body>
-
-<!-- 上部固定バー -->
-<div class="top-bar">ストップウォッチ</div>
-
-<!-- タイマー -->
-<div id="time">00:00.00</div>
-
-<!-- スクロール領域 -->
-<div class="content">
-  <div id="sections"></div>
-</div>
-
-<!-- 下部固定バー -->
-<div class="bottom-bar">
-  <button id="mainBtn" onclick="toggleStartStop()">Start</button>
-  <button id="lapBtn" onclick="addLap()">Lap</button>
-  <button id="nameBtn" onclick="location.href='names.html'">名前</button>
-  <button id="secBtn" onclick="location.href='sections.html'">セクション</button>
-</div>
-
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-
-<script>
-/* Firebase 設定 */
-const firebaseConfig = {
-  apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
-  authDomain: "stopwatch-app-21e5f.firebaseapp.com",
-  projectId: "stopwatch-app-21e5f",
-  storageBucket: "stopwatch-app-21e5f.firebasestorage.app",
-  messagingSenderId: "326918590564",
-  appId: "1:326918590564:web:de3f433f71994d0a698f71"
-};
-
-const app = firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-/* ===== 時刻変換 ===== */
-function toMS(t){
-  const [m,s]=t.split(":");
-  const [sec,ms]=s.split(".");
-  return Number(m)*60000+Number(sec)*1000+Number(ms)*10;
-}
-function fromMS(ms){
-  const m=Math.floor(ms/60000);
-  const s=Math.floor((ms%60000)/1000);
-  const ms2=Math.floor((ms%1000)/10);
-  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(ms2).padStart(2,"0")}`;
-}
-function todayStr(){
-  const d=new Date();
-  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
-}
-
-/* ===== 名前リスト（Firestore） ===== */
-let names = [];
-db.collection("names").doc("shared").onSnapshot(doc=>{
-  if(doc.exists) names = doc.data().list;
-});
-
-/* ===== ローカル（バックアップ） ===== */
-let sections = JSON.parse(localStorage.getItem("sections_local_v1") || "[]");
-
-let timer=null;
-let startTime=0;
-let currentSectionIndex=null;
-
-/* ===== タイマー ===== */
-function updateDisplay(ms){
-  document.getElementById("time").textContent=fromMS(ms);
-}
-function tick(){
-  updateDisplay(Date.now()-startTime);
-}
-
-/* ===== Start / Stop ===== */
-async function toggleStartStop(){
-  const btn=document.getElementById("mainBtn");
-
-  if(timer){
-    /* ---- Stop ---- */
-    clearInterval(timer);
-    timer=null;
-    btn.textContent="Start";
-    btn.style.background="#28a745";
-
-    /* Stop 時のラップ追加 */
-    const nowStr = document.getElementById("time").textContent;
-
-    if(currentSectionIndex !== null){
-      const sec = sections[currentSectionIndex];
-
-      if(sec.laps.length === 0 || sec.laps[sec.laps.length - 1].time !== nowStr){
-        let diff = nowStr;
-        if(sec.laps.length > 0){
-          diff = fromMS(toMS(nowStr) - toMS(sec.laps[sec.laps.length - 1].time));
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            text-align: center;
         }
-        sec.laps.push({ time: nowStr, diff: diff, name: "" });
-        saveLocal();
-      }
-    }
+        #timeDisplay {
+            font-size: 48px;
+            margin: 20px 0;
+        }
+        button {
+            font-size: 20px;
+            padding: 10px 20px;
+            margin: 5px;
+        }
+        #laps {
+            margin-top: 20px;
+            text-align: left;
+        }
+    </style>
+</head>
 
-    /* 練習内容・天気・風を入力 */
-    const practice = prompt("練習内容（例：100m×3）", "");
-    const weather = prompt("天気（例：晴れ 18℃）", "");
-    const wind = prompt("風（例：北風2m）", "");
+<body>
+    <h1>Section Stopwatch</h1>
 
-    /* Firestore 保存 */
-    if(currentSectionIndex !== null){
-      await db.collection("sections").add({
-        timestamp: Date.now(),
-        date: sections[currentSectionIndex].date,
-        practice: practice || "",
-        weather: weather || "",
-        wind: wind || "",
-        laps: sections[currentSectionIndex].laps.map(l => ({
-          time: l.time,
-          diff: l.diff,
-          name: l.name || ""
-        }))
-      });
+    <div id="timeDisplay">00:00.00</div>
 
-      sections.splice(currentSectionIndex,1);
-      currentSectionIndex=null;
-      saveLocal();
-      render();
-    }
+    <button id="startBtn">Start</button>
+    <button id="lapBtn" disabled>Lap</button>
+    <button id="stopBtn" disabled>Stop</button>
+    <button id="resetBtn" disabled>Reset</button>
 
-  }else{
-    /* ---- Start ---- */
-    startTime=Date.now();
-    updateDisplay(0);
-    timer=setInterval(tick,10);
-    btn.textContent="Stop";
-    btn.style.background="#dc3545";
-    startNewSection();
-  }
-}
+    <div id="laps"></div>
 
-/* ===== 新しいセクション ===== */
-function startNewSection(){
-  const sec={
-    date: todayStr(),
-    practice:"",
-    weather:"",
-    wind:"",
-    laps:[]
-  };
-  sections.push(sec);
-  currentSectionIndex=sections.length-1;
-  saveLocal();
-  render();
-}
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
-/* ===== Lap ===== */
-function addLap(){
-  if(currentSectionIndex===null) return;
-  const sec=sections[currentSectionIndex];
-  const nowStr=document.getElementById("time").textContent;
-  let diff=nowStr;
-  if(sec.laps.length>0){
-    diff=fromMS(toMS(nowStr)-toMS(sec.laps[sec.laps.length-1].time));
-  }
-  sec.laps.push({ time:nowStr, diff:diff, name:"" });
-  saveLocal();
-  render();
-}
+    <script>
+        // ★ あなたの firebaseConfig をここに貼る
+        const firebaseConfig = {
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
+        };
 
-/* ===== 名前変更 ===== */
-function changeName(si,li,val){
-  sections[si].laps[li].name=val;
-  saveLocal();
-  render();
-}
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-/* ===== ローカル保存 ===== */
-function saveLocal(){
-  localStorage.setItem("sections_local_v1",JSON.stringify(sections));
-}
+        // ストップウォッチ処理
+        let startTime = 0;
+        let timerInterval;
+        let running = false;
+        let laps = [];
 
-/* ===== 人ごとのラップ ===== */
-function buildPersonLapData(sec){
-  const data={};
-  sec.laps.forEach((lap,idx)=>{
-    if(!lap.name) return;
-    if(!data[lap.name]) data[lap.name]=[];
-    data[lap.name].push({ index:idx, time:lap.time });
-  });
-  return data;
-}
+        const timeDisplay = document.getElementById("timeDisplay");
+        const startBtn = document.getElementById("startBtn");
+        const lapBtn = document.getElementById("lapBtn");
+        const stopBtn = document.getElementById("stopBtn");
+        const resetBtn = document.getElementById("resetBtn");
+        const lapsDiv = document.getElementById("laps");
 
-/* ===== 描画 ===== */
-function render(){
-  const container=document.getElementById("sections");
-  container.innerHTML="";
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const centiseconds = Math.floor((ms % 1000) / 10);
+            return (
+                String(minutes).padStart(2, "0") + ":" +
+                String(seconds).padStart(2, "0") + "." +
+                String(centiseconds).padStart(2, "0")
+            );
+        }
 
-  sections.forEach((sec,si)=>{
-    const box=document.createElement("div");
-    box.className="section";
+        function updateDisplay() {
+            const now = Date.now();
+            const elapsed = now - startTime;
+            timeDisplay.textContent = formatTime(elapsed);
+        }
 
-    let html=`
-      <h3 class="section-title">セクション ${si+1}（${sec.date}）</h3>
-    `;
+        startBtn.onclick = () => {
+            if (!running) {
+                running = true;
+                startTime = Date.now();
+                timerInterval = setInterval(updateDisplay, 10);
+                lapBtn.disabled = false;
+                stopBtn.disabled = false;
+                resetBtn.disabled = true;
+            }
+        };
 
-    const lapCounts={};
-    sec.laps.forEach((lap,li)=>{
-      let lapCount="";
-      if(lap.name){
-        if(!lapCounts[lap.name]) lapCounts[lap.name]=0;
-        lapCounts[lap.name]++;
-        lapCount=lapCounts[lap.name];
-      }
-      html+=`
-        <div class="lap-row">
-          LAP${li+1} ${lap.time} (+${lap.diff})
-          <select onchange="changeName(${si},${li},this.value)">
-            <option value="">未設定</option>
-            ${names.map(n=>`<option value="${n}" ${lap.name===n?"selected":""}>${n}</option>`).join("")}
-          </select>
-          ${lap.name ? `　${lap.name} 周回${lapCount}` : ""}
-        </div>
-      `;
-    });
+        lapBtn.onclick = () => {
+            const now = Date.now();
+            const elapsed = now - startTime;
+            laps.push(formatTime(elapsed));
+            renderLaps();
+        };
 
-    const personData=buildPersonLapData(sec);
-    const persons=Object.keys(personData);
+        stopBtn.onclick = () => {
+            running = false;
+            clearInterval(timerInterval);
+            lapBtn.disabled = true;
+            stopBtn.disabled = true;
+            resetBtn.disabled = false;
 
-    if(persons.length>0){
-      html+=`<div class="summary">`;
-      persons.forEach(name=>{
-        const laps=personData[name];
-        html+=`<div><strong>${name}</strong><br>`;
-        laps.forEach((lp,i)=>{
-          let lapTime;
-          if(i===0) lapTime=lp.time;
-          else lapTime=fromMS(toMS(laps[i].time)-toMS(laps[i-1].time));
-          html+=`　周回${i+1}: ${lapTime}<br>`;
-        });
-        html+=`</div>`;
-      });
-      html+=`</div>`;
-    }
+            // Firestoreへ保存
+            db.collection("sections").add({
+                timestamp: new Date(),
+                laps: laps
+            });
+        };
 
-    box.innerHTML=html;
-    container.appendChild(box);
-  });
-}
+        resetBtn.onclick = () => {
+            timeDisplay.textContent = "00:00.00";
+            laps = [];
+            renderLaps();
+        };
 
-render();
-</script>
+        function renderLaps() {
+            lapsDiv.innerHTML = "";
+            laps.forEach((lap, index) => {
+                lapsDiv.innerHTML += `<div>Lap ${index + 1}: ${lap}</div>`;
+            });
+        }
+    </script>
 </body>
 </html>

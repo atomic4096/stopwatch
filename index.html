@@ -10,14 +10,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Stopwatch">
 
-<!-- ▼▼ ここから追加（PWA設定） ▼▼ -->
+<!-- PWA設定 -->
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
-
 <link rel="apple-touch-startup-image" href="assets/splash-640x1136.png" media="(device-width: 320px)">
 <link rel="apple-touch-startup-image" href="assets/splash-750x1334.png" media="(device-width: 375px)">
 <link rel="apple-touch-startup-image" href="assets/splash-1125x2436.png" media="(device-width: 414px)">
-<!-- ▲▲ ここまで追加 ▲▲ -->
 
 <style>
   body {
@@ -111,7 +109,6 @@
   }
   #mainBtn { background:#28a745; }
   #lapBtn { background:#007bff; }
-  #resetBtn { background:#6c757d; }
   #nameBtn { background:#17a2b8; }
   #secBtn { background:#6610f2; }
 </style>
@@ -124,7 +121,6 @@
 <div class="bottom-bar">
   <button id="mainBtn" onclick="toggleStartStop()">Start</button>
   <button id="lapBtn" onclick="addLap()">Lap</button>
-  <button id="resetBtn" onclick="resetAll()">Reset</button>
   <button id="nameBtn" onclick="location.href='names.html'">名前</button>
   <button id="secBtn" onclick="location.href='sections.html'">セクション</button>
 </div>
@@ -134,7 +130,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <script>
-（※ ここから下はあなたの元のコードそのままなので省略）
+（※ あなたの元の JavaScript はそのままなので省略）
 </script>
 
 </body>

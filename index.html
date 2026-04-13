@@ -130,7 +130,246 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <script>
-（※ あなたの元の JavaScript はそのままなので省略）
+// Firebase 設定
+const firebaseConfig = {
+  apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
+  authDomain: "stopwatch-app-21e5f.firebaseapp.com",
+  projectId: "stopwatch-app-21e5f",
+  storageBucket: "stopwatch-app-21e5f.firebasestorage.app",
+  messagingSenderId: "326918590564",
+  appId: "1:326918590564:web:de3f433f71994d0a698f71"
+};
+
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* ===== 時刻変換 ===== */
+function toMS(t){
+  const [m,s]=t.split(":");
+  const [sec,ms]=s.split(".");
+  return Number(m)*60000+Number(sec)*1000+Number(ms)*10;
+}
+function fromMS(ms){
+  const m=Math.floor(ms/60000);
+  const s=Math.floor((ms%60000)/1000);
+  const ms2=Math.floor((ms%1000)/10);
+  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(ms2).padStart(2,"0")}`;
+}
+function todayStr(){
+  const d=new Date();
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
+}
+
+/* ===== 名前リスト（Firestore） ===== */
+let names = [];
+db.collection("names").doc("shared").onSnapshot(doc=>{
+  if(doc.exists) names = doc.data().list;
+});
+
+/* ===== ローカル（バックアップ） ===== */
+let sections = JSON.parse(localStorage.getItem("sections_local_v1") || "[]");
+
+let timer=null;
+let startTime=0;
+let currentSectionIndex=null;
+
+/* ===== タイマー ===== */
+function updateDisplay(ms){
+  document.getElementById("time").textContent=fromMS(ms);
+}
+function tick(){
+  updateDisplay(Date.now()-startTime);
+}
+
+/* ===== Start / Stop ===== */
+async function toggleStartStop(){
+  const btn=document.getElementById("mainBtn");
+
+  if(timer){
+    // Stop
+    clearInterval(timer);
+    timer=null;
+    btn.textContent="Start";
+    btn.style.background="#28a745";
+
+    // C モード：Stop → 自動保存
+    if(currentSectionIndex !== null){
+      const memo = prompt("メモを入力してください（空欄可）", "");
+      await saveSectionToFirestore(currentSectionIndex, memo || "");
+      sections.splice(currentSectionIndex,1);
+      currentSectionIndex=null;
+      saveLocal();
+      render();
+    }
+
+  }else{
+    // Start
+    startTime=Date.now();
+    updateDisplay(0);
+    timer=setInterval(tick,10);
+    btn.textContent="Stop";
+    btn.style.background="#dc3545";
+    startNewSection();
+  }
+}
+
+/* ===== 新しいセクション ===== */
+function startNewSection(){
+  const sec={
+    date: todayStr(),
+    memo:"",
+    laps:[]
+  };
+  sections.push(sec);
+  currentSectionIndex=sections.length-1;
+  saveLocal();
+  render();
+}
+
+/* ===== Reset ===== */
+function resetAll(){
+  if(timer){ clearInterval(timer); timer=null; }
+  startTime=0;
+  currentSectionIndex=null;
+  sections=[];
+  saveLocal();
+  updateDisplay(0);
+  const btn=document.getElementById("mainBtn");
+  btn.textContent="Start";
+  btn.style.background="#28a745";
+  render();
+}
+
+/* ===== Lap ===== */
+function addLap(){
+  if(currentSectionIndex===null) return;
+  const sec=sections[currentSectionIndex];
+  const nowStr=document.getElementById("time").textContent;
+  let diff=nowStr;
+  if(sec.laps.length>0){
+    diff=fromMS(toMS(nowStr)-toMS(sec.laps[sec.laps.length-1].time));
+  }
+  sec.laps.push({ time:nowStr, diff:diff, name:"" });
+  saveLocal();
+  render();
+}
+
+/* ===== 名前変更 ===== */
+function changeName(si,li,val){
+  sections[si].laps[li].name=val;
+  saveLocal();
+  render();
+}
+
+/* ===== メモ変更 ===== */
+function changeMemo(si,val){
+  sections[si].memo=val;
+  saveLocal();
+}
+
+/* ===== Firestore 保存（A形式：time, diff, name） ===== */
+async function saveSectionToFirestore(si, memoOverride=null){
+  const sec = sections[si];
+
+  await db.collection("sections").add({
+    timestamp: Date.now(),
+    date: sec.date,
+    memo: memoOverride !== null ? memoOverride : sec.memo,
+    laps: sec.laps.map(l => ({
+      time: l.time,
+      diff: l.diff,
+      name: l.name || ""
+    }))
+  });
+}
+
+/* ===== 手動保存（先週版のボタン） ===== */
+async function saveSectionToLocal(si){
+  await saveSectionToFirestore(si);
+  sections.splice(si,1);
+  if(sections.length===0) currentSectionIndex=null;
+  saveLocal();
+  render();
+}
+
+/* ===== ローカル保存（バックアップ） ===== */
+function saveLocal(){
+  localStorage.setItem("sections_local_v1",JSON.stringify(sections));
+}
+
+/* ===== 人ごとのラップ ===== */
+function buildPersonLapData(sec){
+  const data={};
+  sec.laps.forEach((lap,idx)=>{
+    if(!lap.name) return;
+    if(!data[lap.name]) data[lap.name]=[];
+    data[lap.name].push({ index:idx, time:lap.time });
+  });
+  return data;
+}
+
+/* ===== 描画 ===== */
+function render(){
+  const container=document.getElementById("sections");
+  container.innerHTML="";
+
+  sections.forEach((sec,si)=>{
+    const box=document.createElement("div");
+    box.className="section";
+
+    let html=`
+      <h3 class="section-title">セクション ${si+1}（${sec.date}）</h3>
+      <input class="memo-input" placeholder="メモ" value="${sec.memo}"
+        oninput="changeMemo(${si}, this.value)">
+    `;
+
+    const lapCounts={};
+    sec.laps.forEach((lap,li)=>{
+      let lapCount="";
+      if(lap.name){
+        if(!lapCounts[lap.name]) lapCounts[lap.name]=0;
+        lapCounts[lap.name]++;
+        lapCount=lapCounts[lap.name];
+      }
+      html+=`
+        <div class="lap-row">
+          LAP${li+1} ${lap.time} (+${lap.diff})
+          <select onchange="changeName(${si},${li},this.value)">
+            <option value="">未設定</option>
+            ${names.map(n=>`<option value="${n}" ${lap.name===n?"selected":""}>${n}</option>`).join("")}
+          </select>
+          ${lap.name ? `　${lap.name} 周回${lapCount}` : ""}
+        </div>
+      `;
+    });
+
+    const personData=buildPersonLapData(sec);
+    const persons=Object.keys(personData);
+
+    if(persons.length>0){
+      html+=`<div class="summary">`;
+      persons.forEach(name=>{
+        const laps=personData[name];
+        html+=`<div><strong>${name}</strong><br>`;
+        laps.forEach((lp,i)=>{
+          let lapTime;
+          if(i===0) lapTime=lp.time;
+          else lapTime=fromMS(toMS(laps[i].time)-toMS(laps[i-1].time));
+          html+=`　周回${i+1}: ${lapTime}<br>`;
+        });
+        html+=`</div>`;
+      });
+      html+=`</div>`;
+    }
+
+    html+=`<button class="save-btn" onclick="saveSectionToLocal(${si})">セクションを保存して非表示</button>`;
+
+    box.innerHTML=html;
+    container.appendChild(box);
+  });
+}
+
+render();
 </script>
 
 </body>

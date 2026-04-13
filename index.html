@@ -120,7 +120,7 @@
 
 <div class="bottom-bar">
   <button id="mainBtn" onclick="toggleStartStop()">Start</button>
-  <button id="lapBtn" onclick="addLap()">Lap</button>
+  <button id="lapBtn" onclick="addLap()" disabled>Lap</button>
   <button id="nameBtn" onclick="location.href='names.html'">名前</button>
   <button id="secBtn" onclick="location.href='sections.html'">セクション</button>
 </div>
@@ -184,6 +184,7 @@ function tick(){
 /* ===== Start / Stop ===== */
 async function toggleStartStop(){
   const btn=document.getElementById("mainBtn");
+  const lapBtn=document.getElementById("lapBtn");
 
   if(timer){
     // Stop
@@ -191,8 +192,14 @@ async function toggleStartStop(){
     timer=null;
     btn.textContent="Start";
     btn.style.background="#28a745";
+    lapBtn.disabled = true;
 
-    // C モード：Stop → 自動保存
+    // ★ Stop 時に自動で Lap を追加
+    if(currentSectionIndex !== null){
+      addLap();
+    }
+
+    // ★ 自動保存
     if(currentSectionIndex !== null){
       const memo = prompt("メモを入力してください（空欄可）", "");
       await saveSectionToFirestore(currentSectionIndex, memo || "");
@@ -209,6 +216,8 @@ async function toggleStartStop(){
     timer=setInterval(tick,10);
     btn.textContent="Stop";
     btn.style.background="#dc3545";
+    lapBtn.disabled = false;
+
     startNewSection();
   }
 }
@@ -223,20 +232,6 @@ function startNewSection(){
   sections.push(sec);
   currentSectionIndex=sections.length-1;
   saveLocal();
-  render();
-}
-
-/* ===== Reset ===== */
-function resetAll(){
-  if(timer){ clearInterval(timer); timer=null; }
-  startTime=0;
-  currentSectionIndex=null;
-  sections=[];
-  saveLocal();
-  updateDisplay(0);
-  const btn=document.getElementById("mainBtn");
-  btn.textContent="Start";
-  btn.style.background="#28a745";
   render();
 }
 
@@ -267,7 +262,7 @@ function changeMemo(si,val){
   saveLocal();
 }
 
-/* ===== Firestore 保存（A形式：time, diff, name） ===== */
+/* ===== Firestore 保存 ===== */
 async function saveSectionToFirestore(si, memoOverride=null){
   const sec = sections[si];
 
@@ -283,7 +278,7 @@ async function saveSectionToFirestore(si, memoOverride=null){
   });
 }
 
-/* ===== 手動保存（先週版のボタン） ===== */
+/* ===== 手動保存（先週版） ===== */
 async function saveSectionToLocal(si){
   await saveSectionToFirestore(si);
   sections.splice(si,1);
@@ -292,7 +287,7 @@ async function saveSectionToLocal(si){
   render();
 }
 
-/* ===== ローカル保存（バックアップ） ===== */
+/* ===== ローカル保存 ===== */
 function saveLocal(){
   localStorage.setItem("sections_local_v1",JSON.stringify(sections));
 }

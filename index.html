@@ -177,35 +177,44 @@ async function toggleStartStop(){
   const lapBtn=document.getElementById("lapBtn");
 
   if(timer){
-    clearInterval(timer);
-    timer=null;
-    btn.textContent="Start";
-    btn.style.background="#28a745";
-    lapBtn.disabled = true;
+  // Stop
+  clearInterval(timer);
+  timer=null;
+  btn.textContent="Start";
+  btn.style.background="#28a745";
+  lapBtn.disabled = true;
 
-    if(currentSectionIndex !== null){
-      addLap();
-    }
-
-    if(currentSectionIndex !== null){
-      const memo = prompt("メモを入力してください（空欄可）", "");
-      await saveSectionToFirestore(currentSectionIndex, memo || "");
-      sections.splice(currentSectionIndex,1);
-      currentSectionIndex=null;
-      saveLocal();
-      render();
-    }
-
-  }else{
-    startTime=Date.now();
-    updateDisplay(0);
-    timer=setInterval(tick,10);
-    btn.textContent="Stop";
-    btn.style.background="#dc3545";
-    lapBtn.disabled = false;
-
-    startNewSection();
+  // ★ Stop 時に先にラップを追加
+  if(currentSectionIndex !== null){
+    addLap();
   }
+
+  // ★ ラップ追加のあとでメモ入力
+  let memo = "";
+  if(currentSectionIndex !== null){
+    memo = prompt("メモを入力してください（空欄可）", "") || "";
+  }
+
+  // ★ メモを含めて Firestore 保存
+  if(currentSectionIndex !== null){
+    await saveSectionToFirestore(currentSectionIndex, memo);
+    sections.splice(currentSectionIndex,1);
+    currentSectionIndex=null;
+    saveLocal();
+    render();
+  }
+
+} else {
+  // Start
+  startTime=Date.now();
+  updateDisplay(0);
+  timer=setInterval(tick,10);
+  btn.textContent="Stop";
+  btn.style.background="#dc3545";
+  lapBtn.disabled = false;
+
+  startNewSection();
+}
 }
 
 /* ===== 新しいセクション ===== */

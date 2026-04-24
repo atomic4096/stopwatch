@@ -5,65 +5,94 @@
 <title>名前管理</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- PWA設定（index.html と同じ） -->
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="assets/icon-180.png">
-<link rel="apple-touch-startup-image" href="assets/splash-640x1136.png" media="(device-width: 320px)">
-<link rel="apple-touch-startup-image" href="assets/splash-750x1334.png" media="(device-width: 375px)">
-<link rel="apple-touch-startup-image" href="assets/splash-1125x2436.png" media="(device-width: 414px)">
-
 <style>
   body {
     background:#000;
     color:#fff;
     font-family:sans-serif;
-    margin:20px;
-    text-align:center;
+    margin:0;
+    padding-top:60px; /* 固定ヘッダー分の余白 */
   }
-  .card {
+
+  /* 固定ヘッダー（戻る＋入力欄＋追加ボタン） */
+  .top-bar {
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    background:#111;
+    border-bottom:1px solid #333;
+    padding:8px;
+    display:flex;
+    gap:6px;
+    box-sizing:border-box;
+    z-index:10;
+  }
+
+  .top-bar button {
+    background:#007bff;
+    color:#fff;
+    border:none;
+    padding:8px 12px;
+    border-radius:6px;
+    font-size:14px;
+    white-space:nowrap;
+  }
+
+  #nameInput {
+    flex:1;
+    padding:8px;
+    font-size:14px;
+    border-radius:6px;
+    border:1px solid #444;
+    background:#222;
+    color:#fff;
+  }
+
+  /* 名前リスト（超コンパクト） */
+  #nameList {
+    padding:10px;
+  }
+
+  .name-item {
     background:#111;
     border:1px solid #333;
-    border-radius:8px;
-    padding:6px;
-    margin:6px 0;
-    font-size:14px;
-  }
-  input {
-    width:80%;
-    font-size:16px;
-    padding:6px;
-    margin-bottom:8px;
-  }
-  button {
-    font-size:14px;
-    padding:8px 16px;
-    border:none;
     border-radius:6px;
-    color:#fff;
-    margin:4px;
+    padding:6px 10px;
+    margin-bottom:6px;
+    font-size:14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
   }
-  #addBtn { background:#28a745; }
-  .delBtn { background:#dc3545; }
-  #backBtn { background:#17a2b8; }
+
+  .delete-btn {
+    background:#dc3545;
+    color:#fff;
+    border:none;
+    padding:4px 8px;
+    border-radius:4px;
+    font-size:12px;
+  }
 </style>
 </head>
 <body>
 
-<h2>名前管理</h2>
+<!-- 固定ヘッダー -->
+<div class="top-bar">
+  <button onclick="location.href='index.html'">戻る</button>
+  <input id="nameInput" placeholder="名前を入力">
+  <button onclick="addName()">追加</button>
+</div>
 
-<input id="nameInput" type="text" placeholder="名前を入力">
-<button id="addBtn" onclick="addName()">追加</button>
-
-<div id="list"></div>
-
-<button id="backBtn" onclick="location.href='index.html'">戻る</button>
+<!-- 名前リスト -->
+<div id="nameList"></div>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <script>
-// あなたの Firebase 設定
 const firebaseConfig = {
   apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
   authDomain: "stopwatch-app-21e5f.firebaseapp.com",
@@ -73,53 +102,51 @@ const firebaseConfig = {
   appId: "1:326918590564:web:de3f433f71994d0a698f71"
 };
 
-const app = firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let names = [];
 
-// Firestore からリアルタイム取得
-db.collection("names").doc("shared").onSnapshot(doc => {
-  if (doc.exists) {
+/* Firestore から読み込み */
+db.collection("names").doc("shared").onSnapshot(doc=>{
+  if(doc.exists){
     names = doc.data().list;
-  } else {
-    names = [];
+    render();
   }
-  render();
 });
 
-// Firestore に保存
-function save() {
-  db.collection("names").doc("shared").set({ list: names });
+/* 名前追加 */
+function addName(){
+  const input = document.getElementById("nameInput");
+  const val = input.value.trim();
+  if(!val) return;
+
+  names.push(val);
+  input.value = "";
+
+  db.collection("names").doc("shared").set({ list:names });
 }
 
-function render() {
-  const list = document.getElementById("list");
+/* 名前削除 */
+function deleteName(i){
+  names.splice(i,1);
+  db.collection("names").doc("shared").set({ list:names });
+}
+
+/* 描画 */
+function render(){
+  const list = document.getElementById("nameList");
   list.innerHTML = "";
 
-  names.forEach(n => {
+  names.forEach((n,i)=>{
     const div = document.createElement("div");
-    div.className = "card";
+    div.className = "name-item";
     div.innerHTML = `
-      ${n}
-      <button class="delBtn" onclick="delName('${n}')">削除</button>
+      <span>${n}</span>
+      <button class="delete-btn" onclick="deleteName(${i})">削除</button>
     `;
     list.appendChild(div);
   });
-}
-
-function addName() {
-  const input = document.getElementById("nameInput");
-  const v = input.value.trim();
-  if (!v) return;
-  if (!names.includes(v)) names.push(v);
-  input.value = "";
-  save();
-}
-
-function delName(name) {
-  names = names.filter(n => n !== name);
-  save();
 }
 </script>
 

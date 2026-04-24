@@ -77,16 +77,6 @@
     color:#fff;
   }
 
-  .save-btn {
-    margin-top:6px;
-    padding:6px 10px;
-    font-size:14px;
-    border:none;
-    border-radius:4px;
-    background:#fd7e14;
-    color:#fff;
-  }
-
   .bottom-bar {
     position:fixed;
     left:0;
@@ -160,13 +150,13 @@ function todayStr(){
   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
 }
 
-/* ===== 名前リスト（Firestore） ===== */
+/* ===== 名前リスト ===== */
 let names = [];
 db.collection("names").doc("shared").onSnapshot(doc=>{
   if(doc.exists) names = doc.data().list;
 });
 
-/* ===== ローカル（バックアップ） ===== */
+/* ===== ローカル ===== */
 let sections = JSON.parse(localStorage.getItem("sections_local_v1") || "[]");
 
 let timer=null;
@@ -187,19 +177,16 @@ async function toggleStartStop(){
   const lapBtn=document.getElementById("lapBtn");
 
   if(timer){
-    // Stop
     clearInterval(timer);
     timer=null;
     btn.textContent="Start";
     btn.style.background="#28a745";
     lapBtn.disabled = true;
 
-    // ★ Stop 時に自動で Lap を追加
     if(currentSectionIndex !== null){
       addLap();
     }
 
-    // ★ 自動保存
     if(currentSectionIndex !== null){
       const memo = prompt("メモを入力してください（空欄可）", "");
       await saveSectionToFirestore(currentSectionIndex, memo || "");
@@ -210,7 +197,6 @@ async function toggleStartStop(){
     }
 
   }else{
-    // Start
     startTime=Date.now();
     updateDisplay(0);
     timer=setInterval(tick,10);
@@ -276,15 +262,6 @@ async function saveSectionToFirestore(si, memoOverride=null){
       name: l.name || ""
     }))
   });
-}
-
-/* ===== 手動保存（先週版） ===== */
-async function saveSectionToLocal(si){
-  await saveSectionToFirestore(si);
-  sections.splice(si,1);
-  if(sections.length===0) currentSectionIndex=null;
-  saveLocal();
-  render();
 }
 
 /* ===== ローカル保存 ===== */
@@ -357,7 +334,9 @@ function render(){
       html+=`</div>`;
     }
 
+    /* 🔻 削除済み：保存ボタン
     html+=`<button class="save-btn" onclick="saveSectionToLocal(${si})">セクションを保存して非表示</button>`;
+    */
 
     box.innerHTML=html;
     container.appendChild(box);

@@ -50,7 +50,16 @@
     margin-bottom:10px;
   }
 
-  .section-title { font-size:16px; margin:0 0 6px 0; }
+  /* ←←← スマホで改行されないようにする修正 */
+  .section-title {
+    font-size:16px;
+    margin:0 0 6px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+  }
+
   .lap-row { font-size:16px; margin:4px 0; }
 
   .summary {
@@ -91,10 +100,10 @@
   }
  .bottom-bar button {
     flex:1;
-    padding:18px 0;       /* ← 高さアップ */
-    font-size:20px;       /* ← 文字を大きく */
+    padding:18px 0;
+    font-size:20px;
     border:none;
-    border-radius:10px;   /* ← 角丸を少し大きく */
+    border-radius:10px;
     color:#fff;
 }
   #mainBtn { background:#28a745; }
@@ -177,44 +186,44 @@ async function toggleStartStop(){
   const lapBtn=document.getElementById("lapBtn");
 
   if(timer){
-  // Stop
-  clearInterval(timer);
-  timer=null;
-  btn.textContent="Start";
-  btn.style.background="#28a745";
-  lapBtn.disabled = true;
+    // Stop
+    clearInterval(timer);
+    timer=null;
+    btn.textContent="Start";
+    btn.style.background="#28a745";
+    lapBtn.disabled = true;
 
-  // ★ Stop 時に先にラップを追加
-  if(currentSectionIndex !== null){
-    addLap();
+    // ★ Stop 時に先にラップを追加
+    if(currentSectionIndex !== null){
+      addLap();
+    }
+
+    // ★ ラップ追加のあとでメモ入力
+    let memo = "";
+    if(currentSectionIndex !== null){
+      memo = prompt("メモを入力してください（空欄可）", "") || "";
+    }
+
+    // ★ メモを含めて Firestore 保存
+    if(currentSectionIndex !== null){
+      await saveSectionToFirestore(currentSectionIndex, memo);
+      sections.splice(currentSectionIndex,1);
+      currentSectionIndex=null;
+      saveLocal();
+      render();
+    }
+
+  } else {
+    // Start
+    startTime=Date.now();
+    updateDisplay(0);
+    timer=setInterval(tick,10);
+    btn.textContent="Stop";
+    btn.style.background="#dc3545";
+    lapBtn.disabled = false;
+
+    startNewSection();
   }
-
-  // ★ ラップ追加のあとでメモ入力
-  let memo = "";
-  if(currentSectionIndex !== null){
-    memo = prompt("メモを入力してください（空欄可）", "") || "";
-  }
-
-  // ★ メモを含めて Firestore 保存
-  if(currentSectionIndex !== null){
-    await saveSectionToFirestore(currentSectionIndex, memo);
-    sections.splice(currentSectionIndex,1);
-    currentSectionIndex=null;
-    saveLocal();
-    render();
-  }
-
-} else {
-  // Start
-  startTime=Date.now();
-  updateDisplay(0);
-  timer=setInterval(tick,10);
-  btn.textContent="Stop";
-  btn.style.background="#dc3545";
-  lapBtn.disabled = false;
-
-  startNewSection();
-}
 }
 
 /* ===== 新しいセクション ===== */
@@ -342,10 +351,6 @@ function render(){
       });
       html+=`</div>`;
     }
-
-    /* 🔻 削除済み：保存ボタン
-    html+=`<button class="save-btn" onclick="saveSectionToLocal(${si})">セクションを保存して非表示</button>`;
-    */
 
     box.innerHTML=html;
     container.appendChild(box);

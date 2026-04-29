@@ -73,6 +73,17 @@
     border-top:1px dashed #444;
     font-size:14px;
   }
+
+  /* ★ 削除ボタン */
+  .delete-btn {
+    margin-top:10px;
+    padding:8px 12px;
+    font-size:14px;
+    border:none;
+    border-radius:6px;
+    background:#c62828;
+    color:#fff;
+  }
 </style>
 </head>
 <body>
@@ -125,6 +136,7 @@ db.collection("sections")
 
     snapshot.forEach(doc => {
       const sec = doc.data();
+      const id = doc.id;  // ★ 削除に必要
 
       const box = document.createElement("div");
       box.className = "section";
@@ -171,10 +183,24 @@ db.collection("sections")
         html += `</div>`;
       }
 
+      /* ★ 削除ボタン追加 */
+      html += `
+        <button class="delete-btn" onclick="deleteSection('${id}')">
+          このセクションを削除
+        </button>
+      `;
+
       box.innerHTML = html;
       list.appendChild(box);
     });
   });
+
+/* ===== セクション削除 ===== */
+function deleteSection(id){
+  if(confirm("本当に削除しますか？")){
+    db.collection("sections").doc(id).delete();
+  }
+}
 </script>
 
 </body>

@@ -111,6 +111,11 @@
     background: #444;
     color: #fff;
   }
+
+  /* 選択されたボタンの色 */
+  .selected-btn {
+    background:#1e90ff !important;
+  }
 </style>
 </head>
 <body>
@@ -132,20 +137,20 @@
 
     <div>
       <strong>天気</strong><br>
-      <button onclick="selectWeather('晴れ')">晴れ</button>
-      <button onclick="selectWeather('曇り')">曇り</button>
-      <button onclick="selectWeather('雨')">雨</button>
-      <button onclick="selectWeather('風強め')">風強め</button>
-      <button onclick="selectWeather('無風')">無風</button>
+      <button class="weather-btn" onclick="selectWeather('晴れ', event)">晴れ</button>
+      <button class="weather-btn" onclick="selectWeather('曇り', event)">曇り</button>
+      <button class="weather-btn" onclick="selectWeather('雨', event)">雨</button>
+      <button class="weather-btn" onclick="selectWeather('風強め', event)">風強め</button>
+      <button class="weather-btn" onclick="selectWeather('無風', event)">無風</button>
     </div>
 
     <div style="margin-top:10px;">
       <strong>種目</strong><br>
-      <button onclick="selectPractice('100m')">100m</button>
-      <button onclick="selectPractice('400m')">400m</button>
-      <button onclick="selectPractice('片足')">片足</button>
-      <button onclick="selectPractice('タイヤ')">タイヤ</button>
-      <button onclick="selectPractice('リレー')">リレー</button>
+      <button class="practice-btn" onclick="selectPractice('100m', event)">100m</button>
+      <button class="practice-btn" onclick="selectPractice('400m', event)">400m</button>
+      <button class="practice-btn" onclick="selectPractice('片足', event)">片足</button>
+      <button class="practice-btn" onclick="selectPractice('タイヤ', event)">タイヤ</button>
+      <button class="practice-btn" onclick="selectPractice('リレー', event)">リレー</button>
     </div>
 
     <div style="margin-top:10px;">
@@ -280,24 +285,34 @@ function openInputModal() {
   inputWeather = "";
   inputPractice = "";
   document.getElementById("memoInput").value = "";
+
+  // 色リセット
+  document.querySelectorAll(".weather-btn").forEach(btn => btn.classList.remove("selected-btn"));
+  document.querySelectorAll(".practice-btn").forEach(btn => btn.classList.remove("selected-btn"));
+
   document.getElementById("inputModal").style.display = "flex";
 }
 
-function selectWeather(w) {
+function selectWeather(w, e) {
   inputWeather = w;
+
+  document.querySelectorAll(".weather-btn").forEach(btn => btn.classList.remove("selected-btn"));
+  e.target.classList.add("selected-btn");
 }
 
-function selectPractice(p) {
+function selectPractice(p, e) {
   inputPractice = p;
+
+  document.querySelectorAll(".practice-btn").forEach(btn => btn.classList.remove("selected-btn"));
+  e.target.classList.add("selected-btn");
 }
 
 async function finishInput() {
   const memo = document.getElementById("memoInput").value || "";
 
-  // ローカルにも保存
   sections[currentSectionIndex].weather = inputWeather;
   sections[currentSectionIndex].practice = inputPractice;
-  sections[current[currentSectionIndex].memo = memo;
+  sections[currentSectionIndex].memo = memo;
 
   await saveSectionToFirestore(currentSectionIndex, {
     weather: inputWeather,

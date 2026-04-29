@@ -13,9 +13,6 @@
 <!-- PWA設定 -->
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
-<link rel="apple-touch-startup-image" href="assets/splash-640x1136.png" media="(device-width: 320px)">
-<link rel="apple-touch-startup-image" href="assets/splash-750x1334.png" media="(device-width: 375px)">
-<link rel="apple-touch-startup-image" href="assets/splash-1125x2436.png" media="(device-width: 414px)">
 
 <style>
   body {
@@ -50,7 +47,6 @@
     margin-bottom:10px;
   }
 
-  /* ←←← スマホで改行されないようにする修正 */
   .section-title {
     font-size:16px;
     margin:0 0 6px 0;
@@ -110,6 +106,39 @@
   #lapBtn { background:#007bff; }
   #nameBtn { background:#17a2b8; }
   #secBtn { background:#6610f2; }
+
+  /* モーダル */
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+  }
+
+  .modal-content {
+    background: #222;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 350px;
+    color: #fff;
+    text-align: center;
+  }
+
+  .modal-content button {
+    margin: 4px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background: #444;
+    color: #fff;
+  }
 </style>
 </head>
 <body>
@@ -122,6 +151,38 @@
   <button id="lapBtn" onclick="addLap()" disabled>Lap</button>
   <button id="nameBtn" onclick="location.href='names.html'">名前</button>
   <button id="secBtn" onclick="location.href='sections.html'">セクション</button>
+</div>
+
+<!-- 入力モーダル -->
+<div id="inputModal" class="modal">
+  <div class="modal-content">
+    <h3>入力</h3>
+
+    <div>
+      <strong>天気</strong><br>
+      <button onclick="selectWeather('晴れ')">晴れ</button>
+      <button onclick="selectWeather('曇り')">曇り</button>
+      <button onclick="selectWeather('雨')">雨</button>
+      <button onclick="selectWeather('風強め')">風強め</button>
+      <button onclick="selectWeather('無風')">無風</button>
+    </div>
+
+    <div style="margin-top:10px;">
+      <strong>種目</strong><br>
+      <button onclick="selectPractice('100m')">100m</button>
+      <button onclick="selectPractice('400m')">400m</button>
+      <button onclick="selectPractice('片足')">片足</button>
+      <button onclick="selectPractice('タイヤ')">タイヤ</button>
+      <button onclick="selectPractice('リレー')">リレー</button>
+    </div>
+
+    <div style="margin-top:10px;">
+      <strong>メモ</strong><br>
+      <input id="memoInput" type="text" placeholder="メモ（空欄可）">
+    </div>
+
+    <button style="margin-top:15px;" onclick="finishInput()">保存</button>
+  </div>
 </div>
 
 <!-- Firebase -->
@@ -180,41 +241,25 @@ function tick(){
   updateDisplay(Date.now()-startTime);
 }
 
-/* ===== Start / Stop ===== */
+/* ===== Stop / Start ===== */
 async function toggleStartStop(){
   const btn=document.getElementById("mainBtn");
   const lapBtn=document.getElementById("lapBtn");
 
   if(timer){
-    // Stop
     clearInterval(timer);
     timer=null;
     btn.textContent="Start";
     btn.style.background="#28a745";
     lapBtn.disabled = true;
 
-    // ★ Stop 時に先にラップを追加
     if(currentSectionIndex !== null){
       addLap();
     }
 
-    // ★ ラップ追加のあとでメモ入力
-    let memo = "";
-    if(currentSectionIndex !== null){
-      memo = prompt("メモを入力してください（空欄可）", "") || "";
-    }
-
-    // ★ メモを含めて Firestore 保存
-    if(currentSectionIndex !== null){
-      await saveSectionToFirestore(currentSectionIndex, memo);
-      sections.splice(currentSectionIndex,1);
-      currentSectionIndex=null;
-      saveLocal();
-      render();
-    }
+    openInputModal();
 
   } else {
-    // Start
     startTime=Date.now();
     updateDisplay(0);
     timer=setInterval(tick,10);
@@ -253,27 +298,52 @@ function addLap(){
   render();
 }
 
-/* ===== 名前変更 ===== */
-function changeName(si,li,val){
-  sections[si].laps[li].name=val;
-  saveLocal();
-  render();
+/* ===== モーダル入力 ===== */
+let inputWeather = "";
+let inputPractice = "";
+
+function openInputModal() {
+  inputWeather = "";
+  inputPractice = "";
+  document.getElementById("memoInput").value = "";
+  document.getElementById("inputModal").style.display = "flex";
 }
 
-/* ===== メモ変更 ===== */
-function changeMemo(si,val){
-  sections[si].memo=val;
+function selectWeather(w) {
+  inputWeather = w;
+}
+
+function selectPractice(p) {
+  inputPractice = p;
+}
+
+async function finishInput() {
+  const memo = document.getElementById("memoInput").value || "";
+
+  await saveSectionToFirestore(currentSectionIndex, {
+    weather: inputWeather,
+    practice: inputPractice,
+    memo: memo
+  });
+
+  sections.splice(currentSectionIndex, 1);
+  currentSectionIndex = null;
   saveLocal();
+  render();
+
+  document.getElementById("inputModal").style.display = "none";
 }
 
 /* ===== Firestore 保存 ===== */
-async function saveSectionToFirestore(si, memoOverride=null){
+async function saveSectionToFirestore(si, extra){
   const sec = sections[si];
 
   await db.collection("sections").add({
     timestamp: Date.now(),
     date: sec.date,
-    memo: memoOverride !== null ? memoOverride : sec.memo,
+    weather: extra.weather || "",
+    practice: extra.practice || "",
+    memo: extra.memo || "",
     laps: sec.laps.map(l => ({
       time: l.time,
       diff: l.diff,

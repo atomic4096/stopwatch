@@ -2,15 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>セクション一覧</title>
+<title>Saved Sections</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<!-- PWA設定（index.html と同じ） -->
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="assets/icon-180.png">
-<link rel="apple-touch-startup-image" href="assets/splash-640x1136.png" media="(device-width: 320px)">
-<link rel="apple-touch-startup-image" href="assets/splash-750x1334.png" media="(device-width: 375px)">
-<link rel="apple-touch-startup-image" href="assets/splash-1125x2436.png" media="(device-width: 414px)">
 
 <style>
   body {
@@ -18,26 +11,34 @@
     color:#fff;
     font-family:sans-serif;
     margin:0;
-    padding:12px 8px 80px;
+    padding:10px;
   }
-  h2 { margin:8px; }
 
   .section {
     background:#111;
     border:1px solid #333;
     border-radius:8px;
     padding:10px;
-    margin-bottom:10px;
+    margin-bottom:12px;
   }
 
-  .header {
-    font-size:16px;
-    font-weight:bold;
-    cursor:pointer;
-    margin-bottom:6px;
+  .section-title {
+    font-size:18px;
+    margin:0 0 6px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .lap-row { font-size:16px; margin:4px 0; }
+  .info-line {
+    font-size:14px;
+    margin-bottom:4px;
+  }
+
+  .lap-row {
+    font-size:15px;
+    margin:4px 0;
+  }
 
   .summary {
     margin-top:8px;
@@ -46,54 +47,23 @@
     font-size:14px;
   }
 
-  select {
-    font-size:14px;
-    padding:2px 4px;
-    margin-left:6px;
-  }
-
-  .deleteBtn {
-    background:#dc3545;
-    color:#fff;
-    padding:6px 10px;
-    border:none;
-    border-radius:6px;
-    margin-top:10px;
-  }
-
-  .bottom-bar {
-    position:fixed;
-    left:0;
-    bottom:0;
-    width:100%;
-    background:#111;
-    border-top:1px solid #333;
-    padding:8px 4px;
-    display:flex;
-    gap:4px;
-    box-sizing:border-box;
-  }
-  .bottom-bar button {
-    flex:1;
-    padding:10px 0;
+  button {
+    padding:10px 14px;
     font-size:16px;
     border:none;
     border-radius:6px;
+    background:#444;
     color:#fff;
+    margin-top:10px;
   }
-  #backBtn { background:#17a2b8; }
-  #csvBtn { background:#fd7e14; }
 </style>
 </head>
 <body>
 
-<h2>セクション一覧</h2>
-<div id="sections"></div>
+<h2>保存済みセクション</h2>
+<div id="list"></div>
 
-<div class="bottom-bar">
-  <button id="backBtn" onclick="location.href='index.html'">戻る</button>
-  <button id="csvBtn" onclick="downloadCSV()">CSV</button>
-</div>
+<button onclick="location.href='index.html'">戻る</button>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -113,222 +83,78 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let names = [];
-let currentList = []; // ← 追加：最新のセクション一覧を保持
-
-// 名前リスト同期
-db.collection("names").doc("shared").onSnapshot(doc => {
-  if (doc.exists) names = doc.data().list;
-});
-
-// Firestore からセクション一覧を取得（新しい順）
-db.collection("sections")
-  .orderBy("timestamp", "desc")
-  .onSnapshot(snapshot => {
-    currentList = []; // ← 更新
-    snapshot.forEach(doc => currentList.push({ id: doc.id, ...doc.data() }));
-    render(currentList);
-  });
-
-// 時刻変換
+/* ===== ミリ秒変換 ===== */
 function toMS(t){
   const [m,s]=t.split(":");
   const [sec,ms]=s.split(".");
   return Number(m)*60000+Number(sec)*1000+Number(ms)*10;
 }
-function formatCSVTime(ms){
+function fromMS(ms){
   const m=Math.floor(ms/60000);
   const s=Math.floor((ms%60000)/1000);
   const ms2=Math.floor((ms%1000)/10);
-  return `${m}:${String(s).padStart(2,"0")}.${String(ms2).padStart(2,"0")}`;
+  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(ms2).padStart(2,"0")}`;
 }
 
-// 🔥 安全な名前変更（laps 全体を上書き）
-function changeName(secId, lapIndex, value){
-  const sec = currentList.find(s => s.id === secId);
-  if (!sec) return;
+/* ===== Firestore 読み込み ===== */
+db.collection("sections")
+  .orderBy("timestamp", "desc")
+  .onSnapshot(snapshot => {
+    const list = document.getElementById("list");
+    list.innerHTML = "";
 
-  // laps を安全化
-  if (!Array.isArray(sec.laps)) {
-    sec.laps = Object.values(sec.laps || {});
-  }
+    snapshot.forEach(doc => {
+      const sec = doc.data();
 
-  sec.laps[lapIndex].name = value;
+      const box = document.createElement("div");
+      box.className = "section";
 
-  // laps 全体を上書き（部分更新は絶対に使わない）
-  db.collection("sections").doc(secId).update({
-    laps: sec.laps
-  });
-}
+      let html = `
+        <h3 class="section-title">${sec.date}</h3>
 
-// 人ごとのラップ
-function buildPersonLapData(sec){
-  const data={};
-  sec.laps.forEach((lap,idx)=>{
-    if(!lap.name) return;
-    if(!data[lap.name]) data[lap.name]=[];
-    data[lap.name].push({ index:idx, time:lap.time });
-  });
-  return data;
-}
+        <div class="info-line">天気：${sec.weather || "（未入力）"}</div>
+        <div class="info-line">種目：${sec.practice || "（未入力）"}</div>
+        <div class="info-line">メモ：${sec.memo || "（未入力）"}</div>
+      `;
 
-// 描画
-function render(list){
-  const container=document.getElementById("sections");
-  container.innerHTML="";
+      sec.laps.forEach((lap, i) => {
+        html += `
+          <div class="lap-row">
+            LAP${i+1} ${lap.time} (+${lap.diff})
+            ${lap.name ? `　${lap.name}` : ""}
+          </div>
+        `;
+      });
 
-  list.forEach((sec,idx)=>{
+      // 人ごとの周回まとめ
+      const personData = {};
+      sec.laps.forEach((lap, idx) => {
+        if (!lap.name) return;
+        if (!personData[lap.name]) personData[lap.name] = [];
+        personData[lap.name].push({ index: idx, time: lap.time });
+      });
 
-    // laps を最初に安全化
-    if (!Array.isArray(sec.laps)) {
-      sec.laps = Object.values(sec.laps || {});
-    }
-
-    const box=document.createElement("div");
-    box.className="section";
-
-    const header=document.createElement("div");
-    header.className="header";
-
-    const total = sec.laps.length > 0
-      ? sec.laps[sec.laps.length-1].time
-      : "00:00.00";
-
-    const counts = {};
-    sec.laps.forEach(l=>{
-      if(l.name){
-        if(!counts[l.name]) counts[l.name]=0;
-        counts[l.name]++;
-      }
-    });
-
-    const countText = Object.entries(counts)
-      .map(([n,c])=>`${n}${c}周`)
-      .join(" / ") || "周回なし";
-
-    header.textContent =
-      `${sec.memo}（${sec.date}｜${total}｜${countText}）`;
-
-    const body=document.createElement("div");
-    body.style.display="none";
-
-    sec.laps.forEach((lap,li)=>{
-      const row=document.createElement("div");
-      row.className="lap-row";
-
-      const select=document.createElement("select");
-      select.innerHTML =
-        `<option value="">未設定</option>` +
-        names.map(n=>`<option value="${n}">${n}</option>`).join("");
-
-      if(lap.name) select.value = lap.name;
-
-      select.onchange = () => changeName(sec.id, li, select.value);
-
-      row.innerHTML = `LAP${li+1} ${lap.time} (+${lap.diff}) `;
-      row.appendChild(select);
-      body.appendChild(row);
-    });
-
-    const personData=buildPersonLapData(sec);
-    const persons=Object.keys(personData);
-
-    if(persons.length>0){
-      const sum=document.createElement("div");
-      sum.className="summary";
-
-      persons.forEach(name=>{
-        const laps=personData[name];
-        let html=`<div><strong>${name}</strong><br>`;
-        laps.forEach((lp,i)=>{
-          let lapTime;
-          if(i===0) lapTime=lp.time;
-          else lapTime=formatCSVTime(toMS(laps[i].time)-toMS(laps[i-1].time));
-          html+=`　周回${i+1}: ${lapTime}<br>`;
+      const persons = Object.keys(personData);
+      if (persons.length > 0) {
+        html += `<div class="summary">`;
+        persons.forEach(name => {
+          const laps = personData[name];
+          html += `<div><strong>${name}</strong><br>`;
+          laps.forEach((lp, i) => {
+            let lapTime;
+            if (i === 0) lapTime = lp.time;
+            else lapTime = fromMS(toMS(laps[i].time) - toMS(laps[i-1].time));
+            html += `　周回${i+1}: ${lapTime}<br>`;
+          });
+          html += `</div>`;
         });
-        html+=`</div>`;
-        sum.innerHTML += html;
-      });
-
-      body.appendChild(sum);
-    }
-
-    const del=document.createElement("button");
-    del.className="deleteBtn";
-    del.textContent="削除";
-    del.onclick=()=>{
-      if(confirm("削除しますか？")){
-        db.collection("sections").doc(sec.id).delete();
+        html += `</div>`;
       }
-    };
-    body.appendChild(del);
 
-    header.onclick = () => {
-      body.style.display = body.style.display==="none" ? "block" : "none";
-    };
-
-    box.appendChild(header);
-    box.appendChild(body);
-    container.appendChild(box);
-  });
-}
-
-// CSV 出力（そのままでOK）
-function downloadCSV(){
-  db.collection("sections").orderBy("timestamp","asc").get().then(snapshot=>{
-    const list=[];
-    snapshot.forEach(doc=>list.push(doc.data()));
-
-    if(list.length===0){
-      alert("セクションがありません");
-      return;
-    }
-
-    let maxLaps=0;
-    list.forEach(sec=>{
-      const personData=buildPersonLapData(sec);
-      Object.values(personData).forEach(laps=>{
-        if(laps.length>maxLaps) maxLaps=laps.length;
-      });
+      box.innerHTML = html;
+      list.appendChild(box);
     });
-
-    let header="日付,メモ,名前";
-    for(let i=1;i<=maxLaps;i++){
-      header+=`,周回${i}`;
-    }
-    header+="\n";
-
-    let csv=header;
-
-    list.forEach(sec=>{
-      const personData=buildPersonLapData(sec);
-      const persons=Object.keys(personData);
-
-      persons.forEach(name=>{
-        const laps=personData[name];
-        const lapTimes=[];
-
-        laps.forEach((lp,i)=>{
-          if(i===0) lapTimes.push(lp.time);
-          else lapTimes.push(formatCSVTime(toMS(laps[i].time)-toMS(laps[i-1].time)));
-        });
-
-        while(lapTimes.length<maxLaps) lapTimes.push("");
-
-        csv+=`${sec.date},"${sec.memo}",${name},${lapTimes.join(",")}\n`;
-      });
-    });
-
-    const bom="\uFEFF";
-    const blob=new Blob([bom+csv],{type:"text/csv;charset=utf-8"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url;
-    a.download="sections.csv";
-    a.click();
-    URL.revokeObjectURL(url);
   });
-}
 </script>
 
 </body>

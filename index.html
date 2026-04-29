@@ -275,6 +275,8 @@ async function toggleStartStop(){
 function startNewSection(){
   const sec={
     date: todayStr(),
+    weather:"",
+    practice:"",
     memo:"",
     laps:[]
   };
@@ -319,6 +321,11 @@ function selectPractice(p) {
 
 async function finishInput() {
   const memo = document.getElementById("memoInput").value || "";
+
+  // ローカルにも保存
+  sections[currentSectionIndex].weather = inputWeather;
+  sections[currentSectionIndex].practice = inputPractice;
+  sections[currentSectionIndex].memo = memo;
 
   await saveSectionToFirestore(currentSectionIndex, {
     weather: inputWeather,
@@ -379,6 +386,15 @@ function render(){
 
     let html=`
       <h3 class="section-title">セクション ${si+1}（${sec.date}）</h3>
+
+      <div style="font-size:14px; margin-bottom:4px;">
+        天気：${sec.weather || "（未入力）"}
+      </div>
+
+      <div style="font-size:14px; margin-bottom:4px;">
+        種目：${sec.practice || "（未入力）"}
+      </div>
+
       <input class="memo-input" placeholder="メモ" value="${sec.memo}"
         oninput="changeMemo(${si}, this.value)">
     `;

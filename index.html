@@ -5,15 +5,6 @@
 <title>Section Stopwatch</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- iPhone アプリ化 -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Stopwatch">
-
-<!-- PWA設定 -->
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="assets/icon-180.png">
-
 <style>
   body {
     background:#000;
@@ -53,33 +44,14 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    flex-shrink: 0;
   }
 
   .lap-row { font-size:16px; margin:4px 0; }
-
-  .summary {
-    margin-top:8px;
-    padding-top:6px;
-    border-top:1px dashed #444;
-    font-size:14px;
-  }
 
   select {
     font-size:14px;
     padding:2px 4px;
     margin-left:6px;
-  }
-
-  .memo-input {
-    width:100%;
-    font-size:14px;
-    padding:4px;
-    margin:6px 0 10px 0;
-    border-radius:4px;
-    border:1px solid #444;
-    background:#222;
-    color:#fff;
   }
 
   .bottom-bar {
@@ -325,7 +297,7 @@ async function finishInput() {
   // ローカルにも保存
   sections[currentSectionIndex].weather = inputWeather;
   sections[currentSectionIndex].practice = inputPractice;
-  sections[currentSectionIndex].memo = memo;
+  sections[current[currentSectionIndex].memo = memo;
 
   await saveSectionToFirestore(currentSectionIndex, {
     weather: inputWeather,
@@ -364,17 +336,6 @@ function saveLocal(){
   localStorage.setItem("sections_local_v1",JSON.stringify(sections));
 }
 
-/* ===== 人ごとのラップ ===== */
-function buildPersonLapData(sec){
-  const data={};
-  sec.laps.forEach((lap,idx)=>{
-    if(!lap.name) return;
-    if(!data[lap.name]) data[lap.name]=[];
-    data[lap.name].push({ index:idx, time:lap.time });
-  });
-  return data;
-}
-
 /* ===== 描画 ===== */
 function render(){
   const container=document.getElementById("sections");
@@ -386,17 +347,6 @@ function render(){
 
     let html=`
       <h3 class="section-title">セクション ${si+1}（${sec.date}）</h3>
-
-      <div style="font-size:14px; margin-bottom:4px;">
-        天気：${sec.weather || "（未入力）"}
-      </div>
-
-      <div style="font-size:14px; margin-bottom:4px;">
-        種目：${sec.practice || "（未入力）"}
-      </div>
-
-      <input class="memo-input" placeholder="メモ" value="${sec.memo}"
-        oninput="changeMemo(${si}, this.value)">
     `;
 
     const lapCounts={};
@@ -418,25 +368,6 @@ function render(){
         </div>
       `;
     });
-
-    const personData=buildPersonLapData(sec);
-    const persons=Object.keys(personData);
-
-    if(persons.length>0){
-      html+=`<div class="summary">`;
-      persons.forEach(name=>{
-        const laps=personData[name];
-        html+=`<div><strong>${name}</strong><br>`;
-        laps.forEach((lp,i)=>{
-          let lapTime;
-          if(i===0) lapTime=lp.time;
-          else lapTime=fromMS(toMS(laps[i].time)-toMS(laps[i-1].time));
-          html+=`　周回${i+1}: ${lapTime}<br>`;
-        });
-        html+=`</div>`;
-      });
-      html+=`</div>`;
-    }
 
     box.innerHTML=html;
     container.appendChild(box);

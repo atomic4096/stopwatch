@@ -11,7 +11,34 @@
     color:#fff;
     font-family:sans-serif;
     margin:0;
-    padding:10px;
+  }
+
+  /* ★ 固定ヘッダー（戻るボタン） */
+  .top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #111;
+    border-bottom: 1px solid #333;
+    padding: 10px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+  }
+
+  .top-bar button {
+    padding: 10px 14px;
+    font-size: 16px;
+    border: none;
+    border-radius: 6px;
+    background: #444;
+    color: #fff;
+  }
+
+  /* ★ セクション一覧はスクロール領域 */
+  #list {
+    padding: 70px 10px 20px; /* ← 上に余白を作る（ヘッダー分） */
   }
 
   .section {
@@ -46,24 +73,17 @@
     border-top:1px dashed #444;
     font-size:14px;
   }
-
-  button {
-    padding:10px 14px;
-    font-size:16px;
-    border:none;
-    border-radius:6px;
-    background:#444;
-    color:#fff;
-    margin-top:10px;
-  }
 </style>
 </head>
 <body>
 
-<h2>保存済みセクション</h2>
-<div id="list"></div>
+<!-- ★ 固定戻るボタン -->
+<div class="top-bar">
+  <button onclick="location.href='index.html'">戻る</button>
+</div>
 
-<button onclick="location.href='index.html'">戻る</button>
+<!-- セクション一覧 -->
+<div id="list"></div>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>

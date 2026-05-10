@@ -11,32 +11,26 @@
     color:#fff;
     font-family:sans-serif;
     margin:0;
-    padding-top:60px;
   }
 
-  /* ★ 固定ヘッダー（戻るボタン） */
   .top-bar {
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    background:#111;
-    border-bottom:1px solid #333;
-    padding:8px;
-    display:flex;
-    gap:6px;
-    box-sizing:border-box;
-    z-index:10;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #111;
+    border-bottom: 1px solid #333;
+    padding: 10px;
+    z-index: 10;
   }
 
   .top-bar button {
-    background:#007bff;
-    color:#fff;
-    border:none;
-    padding:8px 12px;
-    border-radius:6px;
-    font-size:14px;
-    white-space:nowrap;
+    padding: 10px 14px;
+    font-size: 16px;
+    border: none;
+    border-radius: 6px;
+    background: #17a2b8;
+    color: #fff;
   }
 
   #list {
@@ -98,12 +92,10 @@
 
 <div id="list"></div>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <script>
-// Firebase 設定
 const firebaseConfig = {
   apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
   authDomain: "stopwatch-app-21e5f.firebaseapp.com",
@@ -151,7 +143,9 @@ db.collection("sections")
 
       let html = `
         <h3 class="section-title">${sec.date}</h3>
+
         <div class="info-line">天気：${sec.weather || "（未入力）"}</div>
+        <div class="info-line">風：${sec.wind || "（未入力）"}</div>
         <div class="info-line">種目：${sec.practice || "（未入力）"}</div>
         <div class="info-line">メモ：${sec.memo || "（未入力）"}</div>
       `;
@@ -169,32 +163,35 @@ db.collection("sections")
         `;
       });
 
-      /* ===== 人ごとの周回まとめ ===== */
+      /* ===== 人ごとの周回まとめ（新形式） ===== */
       const personData = {};
       sec.laps.forEach((lap, idx) => {
         if (!lap.name) return;
         if (!personData[lap.name]) personData[lap.name] = [];
-        personData[lap.name].push({ index: idx, time: lap.time });
+        personData[lap.name].push({ index: idx, time: lap.time, diff: lap.diff });
       });
 
       const persons = Object.keys(personData);
       if (persons.length > 0) {
         html += `<div class="summary">`;
+
         persons.forEach(name => {
           const laps = personData[name];
           html += `<div><strong>${name}</strong><br>`;
+
           laps.forEach((lp, i) => {
-            let lapTime = (i === 0)
-              ? lp.time
-              : fromMS(toMS(laps[i].time) - toMS(laps[i-1].time));
-            html += `　周回${i+1}: ${lapTime}<br>`;
+            let cumulative = lp.time;
+            let interval = lp.diff;
+
+            html += `　周回${i+1}: ${cumulative}　(${interval}<br>`;
           });
+
           html += `</div>`;
         });
+
         html += `</div>`;
       }
 
-      /* ===== 削除ボタン ===== */
       html += `
         <button class="delete-btn" onclick="deleteSection('${id}')">
           このセクションを削除

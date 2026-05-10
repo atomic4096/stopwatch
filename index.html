@@ -132,15 +132,24 @@
   <div class="modal-content">
     <h3>入力</h3>
 
+    <!-- 天気 -->
     <div>
       <strong>天気</strong><br>
       <button class="weather-btn" onclick="selectWeather('晴れ', event)">晴れ</button>
       <button class="weather-btn" onclick="selectWeather('曇り', event)">曇り</button>
       <button class="weather-btn" onclick="selectWeather('雨', event)">雨</button>
-      <button class="weather-btn" onclick="selectWeather('風強め', event)">風強め</button>
-      <button class="weather-btn" onclick="selectWeather('無風', event)">無風</button>
     </div>
 
+    <!-- 風 -->
+    <div style="margin-top:10px;">
+      <strong>風</strong><br>
+      <button class="wind-btn" onclick="selectWind('無風', event)">無風</button>
+      <button class="wind-btn" onclick="selectWind('弱風', event)">弱風</button>
+      <button class="wind-btn" onclick="selectWind('中風', event)">中風</button>
+      <button class="wind-btn" onclick="selectWind('強風', event)">強風</button>
+    </div>
+
+    <!-- 種目 -->
     <div style="margin-top:10px;">
       <strong>種目</strong><br>
       <button class="practice-btn" onclick="selectPractice('100m', event)">100m</button>
@@ -150,6 +159,7 @@
       <button class="practice-btn" onclick="selectPractice('リレー', event)">リレー</button>
     </div>
 
+    <!-- メモ -->
     <div style="margin-top:10px;">
       <strong>メモ</strong><br>
       <input id="memoInput" type="text" placeholder="メモ（空欄可）">
@@ -250,6 +260,7 @@ function startNewSection(){
   const sec={
     date: todayStr(),
     weather:"",
+    wind:"",
     practice:"",
     memo:"",
     laps:[]
@@ -274,7 +285,7 @@ function addLap(){
   render();
 }
 
-/* ===== 名前変更（★重要：これが今回の修正点） ===== */
+/* ===== 名前変更（保持される） ===== */
 function changeName(sectionIndex, lapIndex, newName){
   sections[sectionIndex].laps[lapIndex].name = newName;
   saveLocal();
@@ -283,14 +294,17 @@ function changeName(sectionIndex, lapIndex, newName){
 
 /* ===== モーダル入力 ===== */
 let inputWeather = "";
+let inputWind = "";
 let inputPractice = "";
 
 function openInputModal() {
   inputWeather = "";
+  inputWind = "";
   inputPractice = "";
   document.getElementById("memoInput").value = "";
 
   document.querySelectorAll(".weather-btn").forEach(btn => btn.classList.remove("selected-btn"));
+  document.querySelectorAll(".wind-btn").forEach(btn => btn.classList.remove("selected-btn"));
   document.querySelectorAll(".practice-btn").forEach(btn => btn.classList.remove("selected-btn"));
 
   document.getElementById("inputModal").style.display = "flex";
@@ -299,6 +313,12 @@ function openInputModal() {
 function selectWeather(w, e) {
   inputWeather = w;
   document.querySelectorAll(".weather-btn").forEach(btn => btn.classList.remove("selected-btn"));
+  e.target.classList.add("selected-btn");
+}
+
+function selectWind(w, e) {
+  inputWind = w;
+  document.querySelectorAll(".wind-btn").forEach(btn => btn.classList.remove("selected-btn"));
   e.target.classList.add("selected-btn");
 }
 
@@ -312,11 +332,13 @@ async function finishInput() {
   const memo = document.getElementById("memoInput").value || "";
 
   sections[currentSectionIndex].weather = inputWeather;
+  sections[currentSectionIndex].wind = inputWind;
   sections[currentSectionIndex].practice = inputPractice;
   sections[currentSectionIndex].memo = memo;
 
   await saveSectionToFirestore(currentSectionIndex, {
     weather: inputWeather,
+    wind: inputWind,
     practice: inputPractice,
     memo: memo
   });
@@ -337,6 +359,7 @@ async function saveSectionToFirestore(si, extra){
     timestamp: Date.now(),
     date: sec.date,
     weather: extra.weather || "",
+    wind: extra.wind || "",
     practice: extra.practice || "",
     memo: extra.memo || "",
     laps: sec.laps.map(l => ({

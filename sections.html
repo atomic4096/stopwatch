@@ -6,13 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-  body {
-    background:#000;
-    color:#fff;
-    font-family:sans-serif;
-    margin:0;
-  }
-
+  body { background:#000; color:#fff; font-family:sans-serif; margin:0; }
   .top-bar {
     position: fixed;
     top: 0;
@@ -23,7 +17,6 @@
     padding: 10px;
     z-index: 10;
   }
-
   .top-bar button {
     padding: 10px 14px;
     font-size: 16px;
@@ -33,9 +26,7 @@
     color: #fff;
   }
 
-  #list {
-    padding: 70px 10px 20px;
-  }
+  #list { padding: 70px 10px 20px; }
 
   .section {
     background:#111;
@@ -45,20 +36,9 @@
     margin-bottom:12px;
   }
 
-  .section-title {
-    font-size:18px;
-    margin:0 0 6px 0;
-  }
-
-  .info-line {
-    font-size:14px;
-    margin-bottom:4px;
-  }
-
-  .lap-row {
-    font-size:15px;
-    margin:4px 0;
-  }
+  .section-title { font-size:18px; margin:0 0 6px 0; }
+  .info-line { font-size:14px; margin-bottom:4px; }
+  .lap-row { font-size:15px; margin:4px 0; }
 
   select {
     font-size:14px;
@@ -96,7 +76,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <script>
-/* Firebase 設定 */
+/* Firebase */
 const firebaseConfig = {
   apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
   authDomain: "stopwatch-app-21e5f.firebaseapp.com",
@@ -105,8 +85,7 @@ const firebaseConfig = {
   messagingSenderId: "326918590564",
   appId: "1:326918590564:web:de3f433f71994d0a698f71"
 };
-
-const app = firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 /* ===== 名前リスト（ID 方式） ===== */
@@ -144,7 +123,6 @@ db.collection("sections")
 
       let html = `
         <h3 class="section-title">${sec.date}</h3>
-
         <div class="info-line">天気：${sec.weather || "（未入力）"}</div>
         <div class="info-line">風：${sec.wind || "（未入力）"}</div>
         <div class="info-line">種目：${sec.practice || "（未入力）"}</div>
@@ -171,7 +149,7 @@ db.collection("sections")
         `;
       });
 
-      /* ===== 人ごとの周回まとめ（新形式） ===== */
+      /* ===== 人ごとの周回まとめ（累計（区間）形式） ===== */
       const personData = {};
       sec.laps.forEach((lap, idx) => {
         if (!lap.nameId) return;
@@ -192,10 +170,7 @@ db.collection("sections")
           html += `<div><strong>${displayName}</strong><br>`;
 
           laps.forEach((lp, i) => {
-            let cumulative = lp.time;
-            let interval = lp.diff;
-
-            html += `　周回${i+1}: ${cumulative}　(${interval}<br>`;
+            html += `　周回${i+1}: ${lp.time}　(${lp.diff}<br>`;
           });
 
           html += `</div>`;

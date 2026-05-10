@@ -41,9 +41,6 @@
   .section-title {
     font-size:16px;
     margin:0 0 6px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .lap-row { font-size:16px; margin:4px 0; }
@@ -180,6 +177,19 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+/* ===== 名前リスト ===== */
+let names = [];
+db.collection("names").doc("shared").onSnapshot(doc=>{
+  if(doc.exists) names = doc.data().list;
+});
+
+/* ===== ローカル ===== */
+let sections = JSON.parse(localStorage.getItem("sections_local_v1") || "[]");
+
+let timer=null;
+let startTime=0;
+let currentSectionIndex=null;
+
 /* ===== 時刻変換 ===== */
 function toMS(t){
   const [m,s]=t.split(":");
@@ -197,19 +207,6 @@ function todayStr(){
   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
 }
 
-/* ===== 名前リスト ===== */
-let names = [];
-db.collection("names").doc("shared").onSnapshot(doc=>{
-  if(doc.exists) names = doc.data().list;
-});
-
-/* ===== ローカル ===== */
-let sections = JSON.parse(localStorage.getItem("sections_local_v1") || "[]");
-
-let timer=null;
-let startTime=0;
-let currentSectionIndex=null;
-
 /* ===== タイマー ===== */
 function updateDisplay(ms){
   document.getElementById("time").textContent=fromMS(ms);
@@ -218,7 +215,7 @@ function tick(){
   updateDisplay(Date.now()-startTime);
 }
 
-/* ===== Stop / Start ===== */
+/* ===== Start / Stop ===== */
 async function toggleStartStop(){
   const btn=document.getElementById("mainBtn");
   const lapBtn=document.getElementById("lapBtn");
@@ -277,6 +274,13 @@ function addLap(){
   render();
 }
 
+/* ===== 名前変更（★重要：これが今回の修正点） ===== */
+function changeName(sectionIndex, lapIndex, newName){
+  sections[sectionIndex].laps[lapIndex].name = newName;
+  saveLocal();
+  render();
+}
+
 /* ===== モーダル入力 ===== */
 let inputWeather = "";
 let inputPractice = "";
@@ -286,7 +290,6 @@ function openInputModal() {
   inputPractice = "";
   document.getElementById("memoInput").value = "";
 
-  // 色リセット
   document.querySelectorAll(".weather-btn").forEach(btn => btn.classList.remove("selected-btn"));
   document.querySelectorAll(".practice-btn").forEach(btn => btn.classList.remove("selected-btn"));
 
@@ -295,14 +298,12 @@ function openInputModal() {
 
 function selectWeather(w, e) {
   inputWeather = w;
-
   document.querySelectorAll(".weather-btn").forEach(btn => btn.classList.remove("selected-btn"));
   e.target.classList.add("selected-btn");
 }
 
 function selectPractice(p, e) {
   inputPractice = p;
-
   document.querySelectorAll(".practice-btn").forEach(btn => btn.classList.remove("selected-btn"));
   e.target.classList.add("selected-btn");
 }

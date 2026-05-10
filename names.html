@@ -6,69 +6,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-  body {
-    background:#000;
-    color:#fff;
-    font-family:sans-serif;
-    margin:20px;
-    text-align:center;
-  }
-
-  .top-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background: #111;
-    border-bottom: 1px solid #333;
-    padding: 10px;
-    z-index: 10;
-  }
-
-  .top-bar button {
-    padding: 10px 14px;
-    font-size: 16px;
-    border: none;
-    border-radius: 6px;
-    background: #17a2b8;
-    color: #fff;
-  }
-
-  #content {
-    margin-top: 70px;
-  }
-
-  .card {
-    background:#111;
-    border:1px solid #333;
-    border-radius:8px;
-    padding:6px;
-    margin:6px 0;
-    font-size:16px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-  }
-
-  input {
-    width:80%;
-    font-size:16px;
-    padding:6px;
-    margin-bottom:8px;
-  }
-
-  button {
-    font-size:14px;
-    padding:6px 12px;
-    border:none;
-    border-radius:6px;
-    color:#fff;
-    margin-left:4px;
-  }
-
+  body { background:#000; color:#fff; font-family:sans-serif; margin:20px; text-align:center; }
+  .top-bar { position:fixed; top:0; left:0; width:100%; background:#111; border-bottom:1px solid #333; padding:10px; z-index:10; }
+  .top-bar button { padding:10px 14px; font-size:16px; border:none; border-radius:6px; background:#17a2b8; color:#fff; }
+  #content { margin-top:70px; }
+  .card { background:#111; border:1px solid #333; border-radius:8px; padding:6px; margin:6px 0; font-size:16px; display:flex; justify-content:space-between; align-items:center; }
+  input { width:80%; font-size:16px; padding:6px; margin-bottom:8px; }
+  button { font-size:14px; padding:6px 12px; border:none; border-radius:6px; color:#fff; margin-left:4px; }
   #addBtn { background:#28a745; }
   .editBtn { background:#ffc107; color:#000; }
-  .saveBtn { background:#17a2b8; }
   .delBtn { background:#dc3545; }
 </style>
 </head>
@@ -79,22 +25,18 @@
 </div>
 
 <div id="content">
-
   <h2>名前管理</h2>
 
   <input id="nameInput" type="text" placeholder="名前を入力">
   <button id="addBtn" onclick="addName()">追加</button>
 
   <div id="list"></div>
-
 </div>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <script>
-/* Firebase 設定 */
 const firebaseConfig = {
   apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
   authDomain: "stopwatch-app-21e5f.firebaseapp.com",
@@ -107,10 +49,9 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-/* ===== 名前リスト ===== */
 let names = [];
 
-/* Firestore からリアルタイム取得 */
+/* Firestore 読み込み */
 db.collection("names").doc("shared").onSnapshot(doc => {
   if (doc.exists) {
     names = doc.data().list;
@@ -123,58 +64,54 @@ function save() {
   db.collection("names").doc("shared").set({ list: names });
 }
 
-/* ===== 名前追加 ===== */
+/* 名前追加（ID 方式） */
 function addName() {
   const input = document.getElementById("nameInput");
   const v = input.value.trim();
   if (!v) return;
 
-  if (!names.includes(v)) names.push(v);
+  const id = crypto.randomUUID();
+  names.push({ id, name: v });
 
   input.value = "";
   save();
   render();
 }
 
-/* ===== 名前削除 ===== */
-function delName(name) {
-  names = names.filter(n => n !== name);
+/* 名前削除 */
+function delName(id) {
+  names = names.filter(n => n.id !== id);
   save();
   render();
 }
 
-/* ===== 名前編集開始 ===== */
-function editName(oldName) {
-  const newName = prompt("新しい名前を入力してください", oldName);
+/* 名前編集（ID は固定） */
+function editName(id) {
+  const old = names.find(n => n.id === id);
+  const newName = prompt("新しい名前を入力してください", old.name);
   if (!newName) return;
 
-  // すでに存在する名前は追加しない
-  if (names.includes(newName) && newName !== oldName) {
-    alert("同じ名前がすでに存在します");
-    return;
-  }
-
-  // 名前を置き換え
-  names = names.map(n => (n === oldName ? newName : n));
-
+  names = names.map(n => n.id === id ? { ...n, name: newName } : n);
   save();
   render();
 }
 
-/* ===== 描画 ===== */
+/* 五十音順で描画 */
 function render() {
   const list = document.getElementById("list");
   list.innerHTML = "";
 
-  names.forEach(n => {
+  const sorted = [...names].sort((a, b) => a.name.localeCompare(b.name, "ja"));
+
+  sorted.forEach(n => {
     const div = document.createElement("div");
     div.className = "card";
 
     div.innerHTML = `
-      <span>${n}</span>
+      <span>${n.name}</span>
       <div>
-        <button class="editBtn" onclick="editName('${n}')">編集</button>
-        <button class="delBtn" onclick="delName('${n}')">削除</button>
+        <button class="editBtn" onclick="editName('${n.id}')">編集</button>
+        <button class="delBtn" onclick="delName('${n.id}')">削除</button>
       </div>
     `;
 

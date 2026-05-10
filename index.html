@@ -109,7 +109,6 @@
     color: #fff;
   }
 
-  /* 選択されたボタンの色 */
   .selected-btn {
     background:#1e90ff !important;
   }
@@ -169,12 +168,11 @@
   </div>
 </div>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <script>
-// Firebase 設定
+/* Firebase 設定 */
 const firebaseConfig = {
   apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
   authDomain: "stopwatch-app-21e5f.firebaseapp.com",
@@ -187,7 +185,7 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-/* ===== 名前リスト ===== */
+/* ===== 名前リスト（ID 方式） ===== */
 let names = [];
 db.collection("names").doc("shared").onSnapshot(doc=>{
   if(doc.exists) names = doc.data().list;
@@ -280,14 +278,14 @@ function addLap(){
   if(sec.laps.length>0){
     diff=fromMS(toMS(nowStr)-toMS(sec.laps[sec.laps.length-1].time));
   }
-  sec.laps.push({ time:nowStr, diff:diff, name:"" });
+  sec.laps.push({ time:nowStr, diff:diff, nameId:"" });
   saveLocal();
   render();
 }
 
-/* ===== 名前変更（保持される） ===== */
-function changeName(sectionIndex, lapIndex, newName){
-  sections[sectionIndex].laps[lapIndex].name = newName;
+/* ===== 名前変更（ID を保存） ===== */
+function changeName(sectionIndex, lapIndex, newId){
+  sections[sectionIndex].laps[lapIndex].nameId = newId;
   saveLocal();
   render();
 }
@@ -365,7 +363,7 @@ async function saveSectionToFirestore(si, extra){
     laps: sec.laps.map(l => ({
       time: l.time,
       diff: l.diff,
-      name: l.name || ""
+      nameId: l.nameId || ""
     }))
   });
 }
@@ -390,20 +388,24 @@ function render(){
 
     const lapCounts={};
     sec.laps.forEach((lap,li)=>{
+      const nameObj = names.find(n => n.id === lap.nameId);
+      const displayName = nameObj ? nameObj.name : "";
+
       let lapCount="";
-      if(lap.name){
-        if(!lapCounts[lap.name]) lapCounts[lap.name]=0;
-        lapCounts[lap.name]++;
-        lapCount=lapCounts[lap.name];
+      if(displayName){
+        if(!lapCounts[displayName]) lapCounts[displayName]=0;
+        lapCounts[displayName]++;
+        lapCount=lapCounts[displayName];
       }
+
       html+=`
         <div class="lap-row">
           LAP${li+1} ${lap.time} (+${lap.diff})
           <select onchange="changeName(${si},${li},this.value)">
             <option value="">未設定</option>
-            ${names.map(n=>`<option value="${n}" ${lap.name===n?"selected":""}>${n}</option>`).join("")}
+            ${names.map(n=>`<option value="${n.id}" ${lap.nameId===n.id?"selected":""}>${n.name}</option>`).join("")}
           </select>
-          ${lap.name ? `　${lap.name} 周回${lapCount}` : ""}
+          ${displayName ? `　${displayName} 周回${lapCount}` : ""}
         </div>
       `;
     });

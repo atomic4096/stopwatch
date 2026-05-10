@@ -96,6 +96,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <script>
+/* Firebase 設定 */
 const firebaseConfig = {
   apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
   authDomain: "stopwatch-app-21e5f.firebaseapp.com",
@@ -108,7 +109,7 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-/* ===== 名前リスト ===== */
+/* ===== 名前リスト（ID 方式） ===== */
 let names = [];
 db.collection("names").doc("shared").onSnapshot(doc => {
   if (doc.exists) names = doc.data().list;
@@ -150,14 +151,21 @@ db.collection("sections")
         <div class="info-line">メモ：${sec.memo || "（未入力）"}</div>
       `;
 
-      /* ===== ラップ一覧（名前選択付き） ===== */
+      /* ===== ラップ一覧（ID 方式） ===== */
       sec.laps.forEach((lap, i) => {
+        const nameObj = names.find(n => n.id === lap.nameId);
+        const displayName = nameObj ? nameObj.name : "";
+
         html += `
           <div class="lap-row">
             LAP${i+1} ${lap.time} (+${lap.diff})
             <select onchange="updateLapName('${id}', ${i}, this.value)">
               <option value="">未設定</option>
-              ${names.map(n => `<option value="${n}" ${lap.name===n?"selected":""}>${n}</option>`).join("")}
+              ${names.map(n => `
+                <option value="${n.id}" ${lap.nameId===n.id?"selected":""}>
+                  ${n.name}
+                </option>
+              `).join("")}
             </select>
           </div>
         `;
@@ -166,18 +174,22 @@ db.collection("sections")
       /* ===== 人ごとの周回まとめ（新形式） ===== */
       const personData = {};
       sec.laps.forEach((lap, idx) => {
-        if (!lap.name) return;
-        if (!personData[lap.name]) personData[lap.name] = [];
-        personData[lap.name].push({ index: idx, time: lap.time, diff: lap.diff });
+        if (!lap.nameId) return;
+        if (!personData[lap.nameId]) personData[lap.nameId] = [];
+        personData[lap.nameId].push({ index: idx, time: lap.time, diff: lap.diff });
       });
 
       const persons = Object.keys(personData);
       if (persons.length > 0) {
         html += `<div class="summary">`;
 
-        persons.forEach(name => {
-          const laps = personData[name];
-          html += `<div><strong>${name}</strong><br>`;
+        persons.forEach(id => {
+          const nameObj = names.find(n => n.id === id);
+          const displayName = nameObj ? nameObj.name : "(不明)";
+
+          const laps = personData[id];
+
+          html += `<div><strong>${displayName}</strong><br>`;
 
           laps.forEach((lp, i) => {
             let cumulative = lp.time;
@@ -203,13 +215,13 @@ db.collection("sections")
     });
   });
 
-/* ===== ラップの名前を更新 ===== */
-function updateLapName(sectionId, lapIndex, newName){
+/* ===== ラップの名前を更新（ID を保存） ===== */
+function updateLapName(sectionId, lapIndex, newId){
   db.collection("sections").doc(sectionId).get().then(doc => {
     if (!doc.exists) return;
 
     const sec = doc.data();
-    sec.laps[lapIndex].name = newName;
+    sec.laps[lapIndex].nameId = newId;
 
     db.collection("sections").doc(sectionId).update({
       laps: sec.laps

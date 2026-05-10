@@ -27,18 +27,18 @@
     align-items: center;
   }
 
+  /* ★ names.html と同じ色に統一 */
   .top-bar button {
     padding: 10px 14px;
     font-size: 16px;
     border: none;
     border-radius: 6px;
-    background: #444;
+    background: #17a2b8; /* ← 統一色 */
     color: #fff;
   }
 
-  /* ★ セクション一覧はスクロール領域 */
   #list {
-    padding: 70px 10px 20px; /* ← 上に余白を作る（ヘッダー分） */
+    padding: 70px 10px 20px;
   }
 
   .section {
@@ -52,9 +52,6 @@
   .section-title {
     font-size:18px;
     margin:0 0 6px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .info-line {
@@ -67,6 +64,12 @@
     margin:4px 0;
   }
 
+  select {
+    font-size:14px;
+    padding:2px 4px;
+    margin-left:6px;
+  }
+
   .summary {
     margin-top:8px;
     padding-top:6px;
@@ -74,7 +77,6 @@
     font-size:14px;
   }
 
-  /* ★ 削除ボタン */
   .delete-btn {
     margin-top:10px;
     padding:8px 12px;
@@ -88,12 +90,10 @@
 </head>
 <body>
 
-<!-- ★ 固定戻るボタン -->
 <div class="top-bar">
   <button onclick="location.href='index.html'">戻る</button>
 </div>
 
-<!-- セクション一覧 -->
 <div id="list"></div>
 
 <!-- Firebase -->
@@ -113,6 +113,12 @@ const firebaseConfig = {
 
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+
+/* ===== 名前リスト ===== */
+let names = [];
+db.collection("names").doc("shared").onSnapshot(doc => {
+  if (doc.exists) names = doc.data().list;
+});
 
 /* ===== ミリ秒変換 ===== */
 function toMS(t){
@@ -136,14 +142,13 @@ db.collection("sections")
 
     snapshot.forEach(doc => {
       const sec = doc.data();
-      const id = doc.id;  // ★ 削除に必要
+      const id = doc.id;
 
       const box = document.createElement("div");
       box.className = "section";
 
       let html = `
         <h3 class="section-title">${sec.date}</h3>
-
         <div class="info-line">天気：${sec.weather || "（未入力）"}</div>
         <div class="info-line">種目：${sec.practice || "（未入力）"}</div>
         <div class="info-line">メモ：${sec.memo || "（未入力）"}</div>
@@ -153,12 +158,14 @@ db.collection("sections")
         html += `
           <div class="lap-row">
             LAP${i+1} ${lap.time} (+${lap.diff})
-            ${lap.name ? `　${lap.name}` : ""}
+            <select onchange="updateLapName('${id}', ${i}, this.value)">
+              <option value="">未設定</option>
+              ${names.map(n => `<option value="${n}" ${lap.name===n?"selected":""}>${n}</option>`).join("")}
+            </select>
           </div>
         `;
       });
 
-      // 人ごとの周回まとめ
       const personData = {};
       sec.laps.forEach((lap, idx) => {
         if (!lap.name) return;
@@ -173,9 +180,9 @@ db.collection("sections")
           const laps = personData[name];
           html += `<div><strong>${name}</strong><br>`;
           laps.forEach((lp, i) => {
-            let lapTime;
-            if (i === 0) lapTime = lp.time;
-            else lapTime = fromMS(toMS(laps[i].time) - toMS(laps[i-1].time));
+            let lapTime = (i === 0)
+              ? lp.time
+              : fromMS(toMS(laps[i].time) - toMS(laps[i-1].time));
             html += `　周回${i+1}: ${lapTime}<br>`;
           });
           html += `</div>`;
@@ -183,7 +190,6 @@ db.collection("sections")
         html += `</div>`;
       }
 
-      /* ★ 削除ボタン追加 */
       html += `
         <button class="delete-btn" onclick="deleteSection('${id}')">
           このセクションを削除
@@ -194,6 +200,20 @@ db.collection("sections")
       list.appendChild(box);
     });
   });
+
+/* ===== ラップの名前を更新 ===== */
+function updateLapName(sectionId, lapIndex, newName){
+  db.collection("sections").doc(sectionId).get().then(doc => {
+    if (!doc.exists) return;
+
+    const sec = doc.data();
+    sec.laps[lapIndex].name = newName;
+
+    db.collection("sections").doc(sectionId).update({
+      laps: sec.laps
+    });
+  });
+}
 
 /* ===== セクション削除 ===== */
 function deleteSection(id){

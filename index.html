@@ -194,6 +194,13 @@ db.collection("names").doc("shared").onSnapshot(doc=>{
 /* ===== ローカル ===== */
 let sections = JSON.parse(localStorage.getItem("sections_local_v1") || "[]");
 
+// ★ ここに追加
+sections = sections.filter(sec => sec.laps.length > 0);
+saveLocal();
+
+// その後に render()
+render();
+
 let timer=null;
 let startTime=0;
 let currentSectionIndex=null;

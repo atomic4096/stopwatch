@@ -154,6 +154,7 @@ db.collection("sections")
         <div class="info-line">メモ：${sec.memo || "（未入力）"}</div>
       `;
 
+      /* ===== ラップ一覧（名前選択付き） ===== */
       sec.laps.forEach((lap, i) => {
         html += `
           <div class="lap-row">
@@ -166,6 +167,7 @@ db.collection("sections")
         `;
       });
 
+      /* ===== 人ごとの周回まとめ ===== */
       const personData = {};
       sec.laps.forEach((lap, idx) => {
         if (!lap.name) return;
@@ -190,6 +192,7 @@ db.collection("sections")
         html += `</div>`;
       }
 
+      /* ===== 削除ボタン ===== */
       html += `
         <button class="delete-btn" onclick="deleteSection('${id}')">
           このセクションを削除

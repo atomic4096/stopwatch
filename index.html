@@ -169,8 +169,8 @@
 <div id="sections"></div>
 
 <div class="bottom-bar">
-  <button id="mainBtn" onclick="vibrateShort(); playStartSound(); toggleStartStop()">Start</button>
-  <button id="lapBtn" onclick="vibrateShort(); playStartSound(); addLap()" disabled>Lap</button>
+  <button id="mainBtn" onclick="vibrateShort(); playClick(); toggleStartStop()">Start</button>
+  <button id="lapBtn" onclick="vibrateShort(); playClick(); addLap()" disabled>Lap</button>
   <button id="nameBtn" onclick="location.href='names.html'">名前</button>
   <button id="secBtn" onclick="location.href='sections.html'">セクション</button>
 </div>
@@ -224,7 +224,7 @@
 /* ===== スタート音（あなたの MP3） ===== */
 const START_SOUND_URL = "https://github.com/atomic4096/stopwatch/raw/refs/heads/main/start-sound.mp3";
 
-/* ===== 遅延ゼロのためのプリロード ===== */
+/* ===== 遅延ゼロのためのプリロード（スタート音） ===== */
 let startSound = new Audio(START_SOUND_URL);
 startSound.load();
 
@@ -236,17 +236,27 @@ document.addEventListener("touchstart", () => {
   });
 }, { once: true });
 
-/* ===== 音を再生（遅延ゼロ） ===== */
+/* ===== スタート音再生 ===== */
 function playStartSound(){
   startSound.pause();
   startSound.currentTime = 0;
   startSound.play();
 }
 
-/* ===== 音を停止 ===== */
+/* ===== スタート音停止 ===== */
 function stopStartSound(){
   startSound.pause();
   startSound.currentTime = 0;
+}
+
+/* ===== ピッ音（Start / Lap / Stop 用） ===== */
+let clickSound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+clickSound.load();
+
+function playClick(){
+  clickSound.pause();
+  clickSound.currentTime = 0;
+  clickSound.play();
 }
 
 /* ===== バイブ ===== */
@@ -417,7 +427,7 @@ async function finishInput() {
 
   sections[currentSectionIndex].weather = inputWeather;
   sections[currentSectionIndex].wind = inputWind;
-  sections[currentSectionIndex].practice = inputPractice;
+  sections[currentCurrentIndex].practice = inputPractice;
   sections[currentSectionIndex].memo = memo;
 
   await saveSectionToFirestore(currentSectionIndex, {
@@ -459,7 +469,7 @@ function saveLocal(){
   localStorage.setItem("sections_local_v1",JSON.stringify(sections));
 }
 
-/* ===== セクション削除（バイブ・音なし） ===== */
+/* ===== セクション削除 ===== */
 function deleteLocalSection(index, e){
   e.preventDefault();
   e.stopPropagation();

@@ -427,7 +427,7 @@ async function finishInput() {
 
   sections[currentSectionIndex].weather = inputWeather;
   sections[currentSectionIndex].wind = inputWind;
-  sections[currentCurrentIndex].practice = inputPractice;
+  sections[currentSectionIndex].practice = inputPractice;
   sections[currentSectionIndex].memo = memo;
 
   await saveSectionToFirestore(currentSectionIndex, {

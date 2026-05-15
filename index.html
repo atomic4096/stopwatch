@@ -41,7 +41,7 @@
     font-size:18px;
     color:#fff;
     touch-action:manipulation;
-    z-index:20;  
+    z-index:50;  
   }
   #soundBtn { right:56px; }
   #soundStopBtn { right:10px; }
@@ -163,9 +163,11 @@
 
 <div id="time">
   <span id="timeText">00:00.00</span>
+
+  <!-- タイマーの横に表示されるスタート音ボタン -->
+  <button id="soundBtn" onclick="playStartSound()">🔊</button>
+  <button id="soundStopBtn" onclick="stopStartSound()">⏹</button>
 </div>
-<button id="soundBtn" onclick="playStartSound()">🔊</button>
-<button id="soundStopBtn" onclick="stopStartSound()">⏹</button>
 <div id="sections"></div>
 
 <div class="bottom-bar">

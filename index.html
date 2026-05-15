@@ -162,7 +162,7 @@
 <body>
 
 <div id="time">
-  00:00.00
+  <span id="timeText">00:00.00</span>
   <button id="soundBtn" onclick="playStartSound()">🔊</button>
   <button id="soundStopBtn" onclick="stopStartSound()">⏹</button>
 </div>
@@ -314,7 +314,7 @@ let startTime=0;
 let currentSectionIndex=null;
 
 function updateDisplay(ms){
-  document.getElementById("time").textContent=fromMS(ms);
+  document.getElementById("timeText").textContent = fromMS(ms);
 }
 function tick(){
   updateDisplay(Date.now()-startTime);

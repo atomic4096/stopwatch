@@ -28,6 +28,25 @@
     z-index:10;
   }
 
+  /* スタート音ボタン（右端） */
+  #soundBtn {
+    position:absolute;
+    right:10px;
+    top:50%;
+    transform:translateY(-50%);
+    width:36px;
+    height:36px;
+    background:#333;
+    border:none;
+    border-radius:50%;
+    font-size:18px;
+    color:#fff;
+    touch-action:manipulation;
+  }
+  #soundBtn:active {
+    transform:translateY(-50%) scale(0.85);
+  }
+
   #sections { padding:8px; }
 
   .section {
@@ -44,17 +63,22 @@
     position:relative;
   }
 
-  /* ゴミ箱削除ボタン（右端固定） */
+  /* 丸背景の削除ボタン */
   .delBtn {
     position:absolute;
     right:0;
     top:0;
-    background:transparent;
+    width:32px;
+    height:32px;
+    background:#550000;
     border:none;
-    font-size:22px;
-    padding:4px 8px;
-    color:#ff5555;
-    touch-action:manipulation; /* ダブルタップズーム防止 */
+    border-radius:50%;
+    font-size:18px;
+    color:#ff7777;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    touch-action:manipulation;
   }
   .delBtn:active {
     transform:scale(0.85);
@@ -87,6 +111,7 @@
     border:none;
     border-radius:10px;
     color:#fff;
+    touch-action:manipulation;
   }
   #mainBtn { background:#28a745; }
   #lapBtn { background:#007bff; }
@@ -133,12 +158,16 @@
 </head>
 <body>
 
-<div id="time">00:00.00</div>
+<div id="time">
+  00:00.00
+  <button id="soundBtn" onclick="playStartSound()">🔊</button>
+</div>
+
 <div id="sections"></div>
 
 <div class="bottom-bar">
-  <button id="mainBtn" onclick="vibrateShort(); playClick(); toggleStartStop()">Start</button>
-  <button id="lapBtn" onclick="vibrateShort(); playClick(); addLap()" disabled>Lap</button>
+  <button id="mainBtn" onclick="vibrateShort(); playStartSound(); toggleStartStop()">Start</button>
+  <button id="lapBtn" onclick="vibrateShort(); playStartSound(); addLap()" disabled>Lap</button>
   <button id="nameBtn" onclick="location.href='names.html'">名前</button>
   <button id="secBtn" onclick="location.href='sections.html'">セクション</button>
 </div>
@@ -189,7 +218,10 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <script>
-/* Firebase 設定 */
+/* ===== スタート音（あなたの MP3） ===== */
+const START_SOUND_URL = "https://github.com/atomic4096/stopwatch/raw/refs/heads/main/start-sound.mp3";
+
+/* ===== Firebase ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
   authDomain: "stopwatch-app-21e5f.firebaseapp.com",
@@ -202,7 +234,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-/* ===== 名前リスト（ID 方式） ===== */
+/* ===== 名前リスト ===== */
 let names = [];
 db.collection("names").doc("shared").onSnapshot(doc=>{
   if(doc.exists) names = doc.data().list;
@@ -220,10 +252,10 @@ function vibrateShort(){
   if (navigator.vibrate) navigator.vibrate(50);
 }
 
-/* ===== 音 ===== */
-function playClick(){
-  const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg");
-  audio.volume = 0.4;
+/* ===== スタート音再生 ===== */
+function playStartSound(){
+  const audio = new Audio(START_SOUND_URL);
+  audio.volume = 1.0;
   audio.play();
 }
 

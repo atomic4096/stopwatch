@@ -12,7 +12,7 @@
     font-family:sans-serif;
     margin:0;
     padding-top:90px;
-    padding-bottom:120px;
+    padding-bottom:160px;
   }
 
   #time {
@@ -28,26 +28,30 @@
     z-index:10;
   }
 
-  /* スタート音ボタン（右端） */
-  #soundBtn, #soundStopBtn {
-    position:absolute;
-    top:80%;
-    transform:translateY(-100%);
-    width:36px;
-    height:36px;
-    background:#333;
-    border:none;
-    border-radius:50%;
-    font-size:18px;
-    color:#fff;
-    touch-action:manipulation;
-    z-index:20;  
+  #soundButtons {
+    position:fixed;
+    bottom:120px;
+    left:0;
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    padding:0 8px;
+    z-index:20;
   }
-  #soundBtn { right:56px; }
-  #soundStopBtn { right:10px; }
 
-  #soundBtn:active, #soundStopBtn:active {
-    transform:translateY(-50%) scale(0.85);
+  .soundBtn {
+    flex:1;
+    margin:0 4px;
+    background:#550000;
+    color:#fff;
+    border:none;
+    padding:12px 0;
+    border-radius:10px;
+    font-size:20px;
+  }
+
+  .stopBtn {
+    background:#333;
   }
 
   #sections { padding:8px; }
@@ -66,7 +70,6 @@
     position:relative;
   }
 
-  /* 丸背景の削除ボタン */
   .delBtn {
     position:absolute;
     right:0;
@@ -81,10 +84,6 @@
     display:flex;
     justify-content:center;
     align-items:center;
-    touch-action:manipulation;
-  }
-  .delBtn:active {
-    transform:scale(0.85);
   }
 
   .lap-row { font-size:16px; margin:4px 0; }
@@ -114,14 +113,12 @@
     border:none;
     border-radius:10px;
     color:#fff;
-    touch-action:manipulation; /* ← ダブルタップズーム防止 */
   }
   #mainBtn { background:#28a745; }
   #lapBtn { background:#007bff; }
   #nameBtn { background:#17a2b8; }
   #secBtn { background:#6610f2; }
 
-  /* モーダル */
   .modal {
     position: fixed;
     top: 0;
@@ -164,25 +161,26 @@
 <div id="time">
   <span id="timeText">00:00.00</span>
 </div>
-  <!-- タイマーの横に表示されるスタート音ボタン -->
-  <button id="soundBtn" onclick="playStartSound()">🔊</button>
-  <button id="soundStopBtn" onclick="stopStartSound()">⏹</button>
+
+<div id="soundButtons">
+  <button class="soundBtn" onclick="playSound('zennihon')">全日本</button>
+  <button class="soundBtn" onclick="playSound('shizuoka')">静岡</button>
+  <button class="soundBtn stopBtn" onclick="stopAllSounds()">■</button>
+</div>
 
 <div id="sections"></div>
 
 <div class="bottom-bar">
-  <button id="mainBtn" onclick="vibrateShort(); playClick(); toggleStartStop()">Start</button>
-  <button id="lapBtn" onclick="vibrateShort(); playClick(); addLap()" disabled>Lap</button>
+  <button id="mainBtn" onclick="toggleStartStop()">Start</button>
+  <button id="lapBtn" onclick="addLap()" disabled>Lap</button>
   <button id="nameBtn" onclick="location.href='names.html'">名前</button>
   <button id="secBtn" onclick="location.href='sections.html'">セクション</button>
 </div>
 
-<!-- 入力モーダル -->
 <div id="inputModal" class="modal">
   <div class="modal-content">
     <h3>入力</h3>
 
-    <!-- 天気 -->
     <div>
       <strong>天気</strong><br>
       <button class="weather-btn" onclick="selectWeather('晴れ', event)">晴れ</button>
@@ -190,7 +188,6 @@
       <button class="weather-btn" onclick="selectWeather('雨', event)">雨</button>
     </div>
 
-    <!-- 風 -->
     <div style="margin-top:10px;">
       <strong>風</strong><br>
       <button class="wind-btn" onclick="selectWind('無風', event)">無風</button>
@@ -199,7 +196,6 @@
       <button class="wind-btn" onclick="selectWind('強風', event)">強風</button>
     </div>
 
-    <!-- 種目 -->
     <div style="margin-top:10px;">
       <strong>種目</strong><br>
       <button class="practice-btn" onclick="selectPractice('100m', event)">100m</button>
@@ -209,7 +205,6 @@
       <button class="practice-btn" onclick="selectPractice('リレー', event)">リレー</button>
     </div>
 
-    <!-- メモ -->
     <div style="margin-top:10px;">
       <strong>メモ</strong><br>
       <input id="memoInput" type="text" placeholder="メモ（空欄可）">
@@ -223,47 +218,19 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <script>
-/* ===== スタート音（あなたの MP3） ===== */
-const START_SOUND_URL = "https://github.com/atomic4096/stopwatch/raw/refs/heads/main/start-sound.mp3";
+/* ===== 音源 ===== */
+let audioZen = new Audio("start-sound.mp3");
+let audioShiz = new Audio("shizuoka-start.mp3");
 
-/* ===== 遅延ゼロのためのプリロード（スタート音） ===== */
-let startSound = new Audio(START_SOUND_URL);
-startSound.load();
-
-/* ===== iPhone の初回タップで音を解禁 ===== */
-document.addEventListener("touchstart", () => {
-  startSound.play().then(() => {
-    startSound.pause();
-    startSound.currentTime = 0;
-  });
-}, { once: true });
-
-/* ===== スタート音再生 ===== */
-function playStartSound(){
-  startSound.pause();
-  startSound.currentTime = 0;
-  startSound.play();
+function playSound(type){
+  stopAllSounds();
+  if(type==="zennihon") audioZen.play();
+  if(type==="shizuoka") audioShiz.play();
 }
 
-/* ===== スタート音停止 ===== */
-function stopStartSound(){
-  startSound.pause();
-  startSound.currentTime = 0;
-}
-
-/* ===== ピッ音（Start / Lap / Stop 用） ===== */
-let clickSound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-clickSound.load();
-
-function playClick(){
-  clickSound.pause();
-  clickSound.currentTime = 0;
-  clickSound.play();
-}
-
-/* ===== バイブ ===== */
-function vibrateShort(){
-  if (navigator.vibrate) navigator.vibrate(50);
+function stopAllSounds(){
+  audioZen.pause(); audioZen.currentTime=0;
+  audioShiz.pause(); audioShiz.currentTime=0;
 }
 
 /* ===== Firebase ===== */
@@ -287,8 +254,6 @@ db.collection("names").doc("shared").onSnapshot(doc=>{
 
 /* ===== ローカル ===== */
 let sections = JSON.parse(localStorage.getItem("sections_local_v1") || "[]");
-
-/* 未完了セクション自動削除 */
 sections = sections.filter(sec => sec.laps.length > 0);
 saveLocal();
 
@@ -371,11 +336,14 @@ function startNewSection(){
 function addLap(){
   if(currentSectionIndex===null) return;
   const sec=sections[currentSectionIndex];
-  const nowStr=document.getElementById("time").textContent;
+
+  const nowStr = document.getElementById("timeText").textContent;
+
   let diff=nowStr;
   if(sec.laps.length>0){
     diff=fromMS(toMS(nowStr)-toMS(sec.laps[sec.laps.length-1].time));
   }
+
   sec.laps.push({ time:nowStr, diff:diff, nameId:"" });
   saveLocal();
   render();
@@ -427,23 +395,31 @@ function selectPractice(p, e) {
 async function finishInput() {
   const memo = document.getElementById("memoInput").value || "";
 
-  sections[currentSectionIndex].weather = inputWeather;
-  sections[currentSectionIndex].wind = inputWind;
-  sections[currentSectionIndex].practice = inputPractice;
-  sections[currentSectionIndex].memo = memo;
+  const si = currentSectionIndex;
+  if (si === null) {
+    console.error("currentSectionIndex が null");
+    document.getElementById("inputModal").style.display = "none";
+    return;
+  }
 
-  await saveSectionToFirestore(currentSectionIndex, {
+  sections[si].weather = inputWeather;
+  sections[si].wind = inputWind;
+  sections[si].practice = inputPractice;
+  sections[si].memo = memo;
+
+  await saveSectionToFirestore(si, {
     weather: inputWeather,
     wind: inputWind,
     practice: inputPractice,
     memo: memo
   });
 
-  sections.splice(currentSectionIndex, 1);
-  currentSectionIndex = null;
+  sections.splice(si, 1);
   saveLocal();
-  render();
 
+  currentSectionIndex = null;
+
+  render();
   document.getElementById("inputModal").style.display = "none";
 }
 
@@ -485,6 +461,8 @@ function deleteLocalSection(index, e){
 
 /* ===== 描画 ===== */
 function render(){
+  if (!Array.isArray(names)) return;
+
   const container=document.getElementById("sections");
   container.innerHTML="";
 

@@ -2,161 +2,511 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>練習メニュー音出し</title>
-
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Section Stopwatch</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
 <style>
   body {
-    font-family: sans-serif;
-    background: #000;
-    margin: 0;
-    padding: 20px;
-    padding-bottom: 260px;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
+    background:#000;
+    color:#fff;
+    font-family:sans-serif;
+    margin:0;
+    padding-top:90px;
+    padding-bottom:160px;
   }
 
-  .menu-btn {
-    padding: 25px;
-    font-size: 36px;
-    width: 100%;
-    height: 180px;
-    border-radius: 20px;
-    border: 4px solid #FFD700;
-    background: #E53935;
-    color: #fff;
-    font-weight: bold;
+  #time {
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    background:#111;
+    border-bottom:1px solid #333;
+    font-size:48px;
+    text-align:center;
+    padding:12px 0;
+    z-index:10;
   }
 
-  .menu-btn:active {
-    transform: scale(0.95);
-    background: #B71C1C;
+  #soundButtons {
+    position:fixed;
+    bottom:120px;
+    left:0;
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    padding:0 8px;
+    z-index:20;
   }
 
-  /* 練習メニューボタン（特別デザイン） */
-  .nav-btn {
-    grid-column: span 2;
-    height: 150px;
-    font-size: 40px;
-    background: #FFD700;
-    color: #000;
-    border-radius: 20px;
-    border: 4px solid #E53935;
-    font-weight: bold;
+  .soundBtn {
+    flex:1;
+    margin:0 4px;
+    background:#550000;
+    color:#fff;
+    border:none;
+    padding:12px 0;
+    border-radius:10px;
+    font-size:20px;
   }
 
-  .control-area {
+  .stopBtn {
+    background:#333;
+  }
+
+  #sections { padding:8px; }
+
+  .section {
+    background:#111;
+    border:1px solid #333;
+    border-radius:8px;
+    padding:10px;
+    margin-bottom:10px;
+  }
+
+  .section-title {
+    font-size:16px;
+    margin:0 0 6px 0;
+    position:relative;
+  }
+
+  .delBtn {
+    position:absolute;
+    right:0;
+    top:0;
+    width:32px;
+    height:32px;
+    background:#550000;
+    border:none;
+    border-radius:50%;
+    font-size:18px;
+    color:#ff7777;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+  }
+
+  .lap-row { font-size:16px; margin:4px 0; }
+
+  select {
+    font-size:14px;
+    padding:2px 4px;
+    margin-left:6px;
+  }
+
+  .bottom-bar {
+    position:fixed;
+    left:0;
+    bottom:0;
+    width:100%;
+    background:#111;
+    border-top:1px solid #333;
+    padding:8px 4px;
+    display:flex;
+    gap:4px;
+    box-sizing:border-box;
+  }
+  .bottom-bar button {
+    flex:1;
+    padding:18px 0;
+    font-size:20px;
+    border:none;
+    border-radius:10px;
+    color:#fff;
+  }
+  #mainBtn { background:#28a745; }
+  #lapBtn { background:#007bff; }
+  #nameBtn { background:#17a2b8; }
+  #secBtn { background:#6610f2; }
+
+  .modal {
     position: fixed;
-    bottom: 20px;
+    top: 0;
     left: 0;
     width: 100%;
-    display: flex;
-    flex-direction: column;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    justify-content: center;
     align-items: center;
-    gap: 18px;
+    z-index: 20;
   }
 
-  .control {
-    width: 60%;
-    height: 110px;
-    font-size: 50px;
-    border-radius: 20px;
-    border: 4px solid #FFD700;
+  .modal-content {
+    background: #222;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 350px;
+    color: #fff;
+    text-align: center;
+  }
+
+  .modal-content button {
+    margin: 4px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
     background: #444;
-    color: #FFD700;
+    color: #fff;
   }
 
-  #repeatBtn {
-    background: #333;
-    color: #FFD700;
-  }
-
-  #repeatBtn.active {
-    background: #FFD700;
-    color: #000;
+  .selected-btn {
+    background:#1e90ff !important;
   }
 </style>
 </head>
 <body>
 
-<!-- 練習メニューへ移動 -->
-<button class="nav-btn" onclick="location.href='menu.html'">練習メニュー</button>
-
-<!-- 2×4 の音源ボタン -->
-<button class="menu-btn" data-sound="1">ストレッチ</button>
-<button class="menu-btn" data-sound="2">外周</button>
-<button class="menu-btn" data-sound="3">1分スピン/プランク/ブリッジ</button>
-<button class="menu-btn" data-sound="4">足出し足着き</button>
-<button class="menu-btn" data-sound="5">アイドリング/ピルエット</button>
-<button class="menu-btn" data-sound="6">乗り技</button>
-<button class="menu-btn" data-sound="7">振り練</button>
-<button class="menu-btn" data-sound="8">30秒スピン</button>
-
-<div class="control-area">
-  <button id="resumeBtn" class="control">▶</button>
-  <button id="pauseBtn" class="control">⏸</button>
-  <button id="repeatBtn" class="control">🔁</button>
+<div id="time">
+  <span id="timeText">00:00.00</span>
 </div>
 
+<div id="soundButtons">
+  <button class="soundBtn" onclick="playSound('zennihon')">全日本</button>
+  <button class="soundBtn" onclick="playSound('shizuoka')">静岡</button>
+  <button class="soundBtn stopBtn" onclick="stopAllSounds()">■</button>
+</div>
+
+<div id="sections"></div>
+
+<div class="bottom-bar">
+  <button id="mainBtn" onclick="toggleStartStop()">Start</button>
+  <button id="lapBtn" onclick="addLap()" disabled>Lap</button>
+  <button id="nameBtn" onclick="location.href='names.html'">名前</button>
+  <button id="secBtn" onclick="location.href='sections.html'">セクション</button>
+</div>
+
+<div id="inputModal" class="modal">
+  <div class="modal-content">
+    <h3>入力</h3>
+
+    <div>
+      <strong>天気</strong><br>
+      <button class="weather-btn" onclick="selectWeather('晴れ', event)">晴れ</button>
+      <button class="weather-btn" onclick="selectWeather('曇り', event)">曇り</button>
+      <button class="weather-btn" onclick="selectWeather('雨', event)">雨</button>
+    </div>
+
+    <div style="margin-top:10px;">
+      <strong>風</strong><br>
+      <button class="wind-btn" onclick="selectWind('無風', event)">無風</button>
+      <button class="wind-btn" onclick="selectWind('弱風', event)">弱風</button>
+      <button class="wind-btn" onclick="selectWind('中風', event)">中風</button>
+      <button class="wind-btn" onclick="selectWind('強風', event)">強風</button>
+    </div>
+
+    <div style="margin-top:10px;">
+      <strong>種目</strong><br>
+      <button class="practice-btn" onclick="selectPractice('100m', event)">100m</button>
+      <button class="practice-btn" onclick="selectPractice('400m', event)">400m</button>
+      <button class="practice-btn" onclick="selectPractice('片足', event)">片足</button>
+      <button class="practice-btn" onclick="selectPractice('タイヤ', event)">タイヤ</button>
+      <button class="practice-btn" onclick="selectPractice('リレー', event)">リレー</button>
+    </div>
+
+    <div style="margin-top:10px;">
+      <strong>メモ</strong><br>
+      <input id="memoInput" type="text" placeholder="メモ（空欄可）">
+    </div>
+
+    <button style="margin-top:15px;" onclick="finishInput()">保存</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
 <script>
-  const base = "https://raw.githubusercontent.com/atomic4096/music/main/";
+/* ===== 音源 ===== */
+let audioZen = new Audio("start-sound.mp3");
+let audioShiz = new Audio("shizuoka-start.mp3");
 
-  const soundURLs = {
-    1: base + "stretch.mp3",
-    2: base + "outer_loop.mp3",
-    3: base + "spin_1min.mp3",
-    4: base + "leg_spin.mp3",
-    5: base + "idling_figure8.mp3",
-    6: base + "trick_riding.mp3",
-    7: base + "swing_practice.mp3",
-    8: base + "spin_30sec.mp3"
+function playSound(type){
+  stopAllSounds();
+  if(type==="zennihon") audioZen.play();
+  if(type==="shizuoka") audioShiz.play();
+}
+
+function stopAllSounds(){
+  audioZen.pause(); audioZen.currentTime=0;
+  audioShiz.pause(); audioShiz.currentTime=0;
+}
+
+/* ===== Firebase ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyC7g7RRw3LxO7fBQJghrm2hvxkwcYPT55k",
+  authDomain: "stopwatch-app-21e5f.firebaseapp.com",
+  projectId: "stopwatch-app-21e5f",
+  storageBucket: "stopwatch-app-21e5f.firebasestorage.app",
+  messagingSenderId: "326918590564",
+  appId: "1:326918590564:web:de3f433f71994d0a698f71"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* ===== 名前リスト ===== */
+let names = [];
+db.collection("names").doc("shared").onSnapshot(doc=>{
+  if(doc.exists) names = doc.data().list;
+});
+
+/* ===== ローカル ===== */
+let sections = JSON.parse(localStorage.getItem("sections_local_v1") || "[]");
+sections = sections.filter(sec => sec.laps.length > 0);
+saveLocal();
+
+/* ===== 時刻変換 ===== */
+function toMS(t){
+  const [m,s]=t.split(":");
+  const [sec,ms]=s.split(".");
+  return Number(m)*60000+Number(sec)*1000+Number(ms)*10;
+}
+function fromMS(ms){
+  const m=Math.floor(ms/60000);
+  const s=Math.floor((ms%60000)/1000);
+  const ms2=Math.floor((ms%1000)/10);
+  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(ms2).padStart(2,"0")}`;
+}
+function todayStr(){
+  const d=new Date();
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
+}
+
+/* ===== タイマー ===== */
+let timer=null;
+let startTime=0;
+let currentSectionIndex=null;
+
+function updateDisplay(ms){
+  document.getElementById("timeText").textContent = fromMS(ms);
+}
+function tick(){
+  updateDisplay(Date.now()-startTime);
+}
+
+/* ===== Start / Stop ===== */
+async function toggleStartStop(){
+  const btn=document.getElementById("mainBtn");
+  const lapBtn=document.getElementById("lapBtn");
+
+  if(timer){
+    clearInterval(timer);
+    timer=null;
+    btn.textContent="Start";
+    btn.style.background="#28a745";
+    lapBtn.disabled = true;
+
+    if(currentSectionIndex !== null){
+      addLap();
+    }
+
+    openInputModal();
+
+  } else {
+    startTime=Date.now();
+    updateDisplay(0);
+    timer=setInterval(tick,10);
+    btn.textContent="Stop";
+    btn.style.background="#dc3545";
+    lapBtn.disabled = false;
+
+    startNewSection();
+  }
+}
+
+/* ===== 新しいセクション ===== */
+function startNewSection(){
+  const sec={
+    date: todayStr(),
+    weather:"",
+    wind:"",
+    practice:"",
+    memo:"",
+    laps:[]
   };
+  sections.push(sec);
+  currentSectionIndex=sections.length-1;
+  saveLocal();
+  render();
+}
 
-  const audios = {};
-  let currentPlaying = null;
-  let repeatMode = false;
+/* ===== Lap ===== */
+function addLap(){
+  if(currentSectionIndex===null) return;
+  const sec=sections[currentSectionIndex];
 
-  for (let i = 1; i <= 8; i++) {
-    audios[i] = new Audio(soundURLs[i]);
+  const nowStr = document.getElementById("timeText").textContent;
+
+  let diff=nowStr;
+  if(sec.laps.length>0){
+    diff=fromMS(toMS(nowStr)-toMS(sec.laps[sec.laps.length-1].time));
   }
 
-  document.querySelectorAll(".menu-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const id = Number(btn.dataset.sound);
+  sec.laps.push({ time:nowStr, diff:diff, nameId:"" });
+  saveLocal();
+  render();
+}
 
-      for (let i = 1; i <= 8; i++) {
-        audios[i].pause();
-        audios[i].currentTime = 0;
+/* ===== 名前変更 ===== */
+function changeName(sectionIndex, lapIndex, newId){
+  sections[sectionIndex].laps[lapIndex].nameId = newId;
+  saveLocal();
+  render();
+}
+
+/* ===== モーダル入力 ===== */
+let inputWeather = "";
+let inputWind = "";
+let inputPractice = "";
+
+function openInputModal() {
+  inputWeather = "";
+  inputWind = "";
+  inputPractice = "";
+  document.getElementById("memoInput").value = "";
+
+  document.querySelectorAll(".weather-btn").forEach(btn => btn.classList.remove("selected-btn"));
+  document.querySelectorAll(".wind-btn").forEach(btn => btn.classList.remove("selected-btn"));
+  document.querySelectorAll(".practice-btn").forEach(btn => btn.classList.remove("selected-btn"));
+
+  document.getElementById("inputModal").style.display = "flex";
+}
+
+function selectWeather(w, e) {
+  inputWeather = w;
+  document.querySelectorAll(".weather-btn").forEach(btn => btn.classList.remove("selected-btn"));
+  e.target.classList.add("selected-btn");
+}
+
+function selectWind(w, e) {
+  inputWind = w;
+  document.querySelectorAll(".wind-btn").forEach(btn => btn.classList.remove("selected-btn"));
+  e.target.classList.add("selected-btn");
+}
+
+function selectPractice(p, e) {
+  inputPractice = p;
+  document.querySelectorAll(".practice-btn").forEach(btn => btn.classList.remove("selected-btn"));
+  e.target.classList.add("selected-btn");
+}
+
+async function finishInput() {
+  const memo = document.getElementById("memoInput").value || "";
+
+  const si = currentSectionIndex;
+  if (si === null) {
+    console.error("currentSectionIndex が null");
+    document.getElementById("inputModal").style.display = "none";
+    return;
+  }
+
+  sections[si].weather = inputWeather;
+  sections[si].wind = inputWind;
+  sections[si].practice = inputPractice;
+  sections[si].memo = memo;
+
+  await saveSectionToFirestore(si, {
+    weather: inputWeather,
+    wind: inputWind,
+    practice: inputPractice,
+    memo: memo
+  });
+
+  sections.splice(si, 1);
+  saveLocal();
+
+  currentSectionIndex = null;
+
+  render();
+  document.getElementById("inputModal").style.display = "none";
+}
+
+/* ===== Firestore 保存 ===== */
+async function saveSectionToFirestore(si, extra){
+  const sec = sections[si];
+
+  await db.collection("sections").add({
+    timestamp: Date.now(),
+    date: sec.date,
+    weather: extra.weather || "",
+    wind: extra.wind || "",
+    practice: extra.practice || "",
+    memo: extra.memo || "",
+    laps: sec.laps.map(l => ({
+      time: l.time,
+      diff: l.diff,
+      nameId: l.nameId || ""
+    }))
+  });
+}
+
+/* ===== ローカル保存 ===== */
+function saveLocal(){
+  localStorage.setItem("sections_local_v1",JSON.stringify(sections));
+}
+
+/* ===== セクション削除 ===== */
+function deleteLocalSection(index, e){
+  e.preventDefault();
+  e.stopPropagation();
+
+  if(!confirm("このセクションを削除しますか？")) return;
+
+  sections.splice(index, 1);
+  saveLocal();
+  render();
+}
+
+/* ===== 描画 ===== */
+function render(){
+  if (!Array.isArray(names)) return;
+
+  const container=document.getElementById("sections");
+  container.innerHTML="";
+
+  sections.forEach((sec,si)=>{
+    const box=document.createElement("div");
+    box.className="section";
+
+    let html=`
+      <h3 class="section-title">
+        セクション ${si+1}（${sec.date}）
+        <button class="delBtn" onclick="deleteLocalSection(${si}, event)">🗑️</button>
+      </h3>
+    `;
+
+    const lapCounts={};
+    sec.laps.forEach((lap,li)=>{
+      const nameObj = names.find(n => n.id === lap.nameId);
+      const displayName = nameObj ? nameObj.name : "";
+
+      let lapCount="";
+      if(displayName){
+        if(!lapCounts[displayName]) lapCounts[displayName]=0;
+        lapCounts[displayName]++;
+        lapCount=lapCounts[displayName];
       }
 
-      currentPlaying = audios[id];
-      currentPlaying.loop = repeatMode;
-      currentPlaying.play();
+      html+=`
+        <div class="lap-row">
+          LAP${li+1} ${lap.time} (+${lap.diff})
+          <select onchange="changeName(${si},${li},this.value)">
+            <option value="">未設定</option>
+            ${names.map(n=>`<option value="${n.id}" ${lap.nameId===n.id?"selected":""}>${n.name}</option>`).join("")}
+          </select>
+          ${displayName ? `　${displayName} 周回${lapCount}` : ""}
+        </div>
+      `;
     });
-  });
 
-  document.getElementById("pauseBtn").addEventListener("click", () => {
-    if (currentPlaying) currentPlaying.pause();
+    box.innerHTML=html;
+    container.appendChild(box);
   });
+}
 
-  document.getElementById("resumeBtn").addEventListener("click", () => {
-    if (currentPlaying) currentPlaying.play();
-  });
-
-  document.getElementById("repeatBtn").addEventListener("click", () => {
-    repeatMode = !repeatMode;
-    const btn = document.getElementById("repeatBtn");
-    btn.classList.toggle("active", repeatMode);
-    if (currentPlaying) currentPlaying.loop = repeatMode;
-  });
-
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js");
-  }
+render();
 </script>
 
 </body>
